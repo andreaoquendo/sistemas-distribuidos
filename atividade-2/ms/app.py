@@ -5,7 +5,7 @@ from flask_cors import CORS
 from consulta import consultar_opcoes
 from marketing import publish_sale
 from reserva import realizar_reserva
-from marketing_email import receber_emails
+from ms.assinante import receber_emails
 
 app = Flask(__name__)
 CORS(app)
