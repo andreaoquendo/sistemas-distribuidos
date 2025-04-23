@@ -46,5 +46,12 @@ def efetuar_reserva():
     realizar_reserva(destino, data_embarque, quantidade_passageiros, quantidade_cabines)
     return jsonify({"status": "Reserva efetuada com sucesso!"}), 200
 
+@app.route('/consultar-itinerarios', methods=['GET'])
+def rota_consulta():
+    destino = request.args.get('destino')
+    data = request.args.get('data_embarque')
+    porto = request.args.get('porto_embarque')
+    return consultar_opcoes(destino, data, porto)
+
 if __name__ == "__main__":
     app.run(debug=True, port=8080)
