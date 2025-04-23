@@ -1,6 +1,4 @@
-import pika, json, random
-from utils_crypto import assinar_mensagem
-from flask import jsonify
+import pika, random
 
 def processar_pagamento(reserva_id):
     # Simula aprovação ou recusa aleatória
@@ -12,9 +10,8 @@ def processar_pagamento(reserva_id):
         "id": reserva_id,
         "status": status
     }
-    # Assinatura digital
-    assinatura = assinar_mensagem(json.dumps(mensagem, sort_keys=True))
-    mensagem["assinatura"] = assinatura
+
+    #TO-DO Assinatura
 
     # Envio para RabbitMQ
     connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
@@ -23,4 +20,4 @@ def processar_pagamento(reserva_id):
     channel.basic_publish(exchange='', routing_key=status, body=json.dumps(mensagem))
     connection.close()
 
-    return jsonify({"status": status, "reserva_id": reserva_id})
+    return (status)
