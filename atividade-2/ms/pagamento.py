@@ -1,4 +1,7 @@
 import pika, random
+from Crypto.Signature import pkcs1_15
+from Crypto.Hash import SHA256
+from Crypto.PublicKey import RSA
 
 def processar_pagamento(reserva_id):
     # Simula aprovação ou recusa aleatória
@@ -6,12 +9,12 @@ def processar_pagamento(reserva_id):
     status = 'pagamento-aprovado' if aprovado else 'pagamento-recusado'
 
     # Mensagem a ser enviada
-    mensagem = {
-        "id": reserva_id,
-        "status": status
-    }
+    mensagem = status
 
-    #TO-DO Assinatura
+    #Assinatura
+    key = RSA.import_key(open('private_key.der').read())
+    h = SHA256.new(messagem)
+    assinatura = pkcs1_15.new(key).sign(h)
 
     # Envio para RabbitMQ
     connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
@@ -20,4 +23,4 @@ def processar_pagamento(reserva_id):
     channel.basic_publish(exchange='', routing_key=status, body=json.dumps(mensagem))
     connection.close()
 
-    return (status)
+    return (assinatura)
