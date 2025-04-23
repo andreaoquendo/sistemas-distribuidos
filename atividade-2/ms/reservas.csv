@@ -1,4 +1,2 @@
-id,destino,data_embarque,quantidade_passageiros,quantidade_cabines,valor_final
-c80c8cc4-7811-43e2-82ff-a004d598b1bb,disney,10/02/2025,9,3
-83f48621-7575-4ae9-9bfc-2efcd56439aa,Bahamas,25/04/2025,9,3,10
-cb4489a6-f815-4cd6-9997-4a9c6078a6a9,Bahamas,25/04/2025,9,3,265680
+id,destino,data_embarque,quantidade_passageiros,quantidade_cabines,valor_total
+88093a4c-f6a3-46fc-bfde-2127d7586442,Alaska,16/05/2025,2,4,33490
