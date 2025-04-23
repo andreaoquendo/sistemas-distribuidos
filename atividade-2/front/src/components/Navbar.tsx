@@ -3,8 +3,10 @@ import styled from "styled-components";
 
 const Nav = styled.nav`
   padding: 16px;
-  background-color: #001f3f;
+  background-color: #2f4156;
   display: flex;
+  justify-content: center;
+  align-items: center;
   gap: 16px;
 `;
 
