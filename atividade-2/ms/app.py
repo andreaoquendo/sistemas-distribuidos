@@ -4,6 +4,7 @@ import pika
 import pandas as pd
 from consulta import consultar_opcoes
 from marketing import publish_sale
+from reserva import realizar_reserva
 
 app = Flask(__name__)
 
@@ -31,16 +32,18 @@ def consulta():
 
     return consultar_opcoes(destino, data_embarque, porto_embarque), 200
 
-@app.route("/efetuar_reserva", methods=["GET"])
+@app.route("/efetuar_reserva", methods=["POST"])
 def efetuar_reserva():
-    destino = request.args.get("destino")
-    data_embarque = request.args.get("data_embarque")
-    porto_embarque = request.args.get("porto_embarque")
-
-    if not destino or not data_embarque or not porto_embarque:
-        return jsonify({"erro": "destino, data_embarque e porto_embarque são obrigatórios"}), 400
-
-    # Aqui você pode adicionar a lógica para efetuar a reserva
+    data = request.json
+    destino = data.get("destino")
+    data_embarque = data.get("data_embarque")
+    quantidade_passageiros = data.get("quantidade_passageiros")
+    quantidade_cabines = data.get("quantidade_cabines")
+    
+    if not destino or not data_embarque or not quantidade_cabines or not quantidade_passageiros:
+        return jsonify({"erro": "destino, data_embarque, quantidade_passageiros e quantidade_cabines são obrigatórios"}), 400
+    
+    realizar_reserva(destino, data_embarque, quantidade_passageiros, quantidade_cabines)
     return jsonify({"status": "Reserva efetuada com sucesso!"}), 200
 
 if __name__ == "__main__":
