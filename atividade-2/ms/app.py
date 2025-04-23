@@ -69,5 +69,10 @@ def rota_consulta():
     porto = request.args.get('porto_embarque')
     return consultar_opcoes(destino, data, porto)
 
+
+@app.route('/pagamento/<reserva_id>', methods=['POST'])
+def pagamento_route(reserva_id):
+    return processar_pagamento(reserva_id)
+
 if __name__ == "__main__":
     app.run(debug=True, port=8080)
