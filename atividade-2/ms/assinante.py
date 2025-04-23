@@ -1,4 +1,5 @@
 import pika
+
 def receber_emails(email, destinos):
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(host='localhost'))
