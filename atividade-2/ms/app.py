@@ -1,12 +1,28 @@
 # ms_marketing/app.py
+import threading
 from flask import Flask, request, jsonify
-import pika
-import pandas as pd
+from flask_cors import CORS
 from consulta import consultar_opcoes
 from marketing import publish_sale
 from reserva import realizar_reserva
+from marketing_email import receber_emails
 
 app = Flask(__name__)
+CORS(app)
+
+@app.route("/subscribe", methods=["POST"])
+def subscribe():
+    data = request.json
+    email = data.get("email")
+    destinos = data.get("destinos")
+
+    if not email or not destinos:
+        return jsonify({"erro": "email e destinos são obrigatórios"}), 400
+    
+    thread = threading.Thread(target=receber_emails, args=(email, destinos), daemon=True)
+    thread.start()
+    
+    return jsonify({"status": "Inscrito com sucesso!"}), 200
 
 # Endpoint para receber requisições POST com dados de promoção, isto é, destino e mensagem
 @app.route("/sales", methods=["POST"])
