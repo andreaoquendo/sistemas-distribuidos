@@ -2,6 +2,7 @@ import pika
 import random
 import time
 
+# Funcionalidade 5
 def publish_sale(destiny, message):
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(host='localhost'))
