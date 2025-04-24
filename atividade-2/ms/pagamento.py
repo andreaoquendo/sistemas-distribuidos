@@ -32,7 +32,7 @@ def gerenciar_reserva():
 def processar_pagamento(reserva_id):
     # Simula aprovação ou recusa aleatória
     aprovado = random.choice([True, False])
-    status = 'pagamento-recusado' #if aprovado else 'pagamento-recusado'
+    status = 'pagamento-recusado' if aprovado else 'pagamento-recusado'
 
     # Mensagem a ser enviada
     mensagem = reserva_id
