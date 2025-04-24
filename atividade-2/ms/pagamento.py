@@ -33,7 +33,7 @@ def gerenciar_reserva():
 def processar_pagamento(reserva_id):
     # Simula aprovação ou recusa aleatória
     aprovado = random.choice([True, False])
-    status = 'pagamento-recusado' if aprovado else 'pagamento-recusado'
+    status = 'pagamento-aprovado' if aprovado else 'pagamento-recusado'
 
     # Mensagem a ser enviada
     mensagem = reserva_id
@@ -49,6 +49,12 @@ def processar_pagamento(reserva_id):
     mensagem_envio = f"{reserva_id}:{base64.b64encode(assinatura).decode('utf-8')}"
     channel.basic_publish(exchange='cruzeiros', routing_key=status, body=mensagem_envio)
     connection.close()
+
+    if aprovado:
+        print(f"[MS Pagamento] Pagamento APROVADO para reserva {reserva_id}")
+    else:
+        print(f"[MS Pagamento] Pagamento RECUSADO para reserva {reserva_id}")
+    print(f"[MS Pagamento] Mensagem enviada na fila '{status}' com assinatura.")
 
 if __name__ == "__main__":
     gerenciar_reserva()

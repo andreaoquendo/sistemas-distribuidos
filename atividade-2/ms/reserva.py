@@ -173,20 +173,20 @@ def andamento_reserva():
             return
         elif routing_key == 'bilhete-gerado':
             print(f"[🎫] Bilhete gerado para reserva {reserva_id}")
-            
-    
+
     def bilhete_callback(ch, method, properties, body):
         data = body.decode()
-        print(f"[🎫] Bilhete gerado para reserva")
-        print(data)
-        channel.stop_consuming()
-        connection.close()
-        return
+        reserva_id = data.split("=")[1]
+        if routing_key == 'bilhete-gerado':
+            print(f"[✔] Bilhete gerado para reserva {reserva_id}")
+        elif routing_key == 'bilhete-nao-gerado':
+            print(f"[x] Bilhete NÃO gerado para reserva {reserva_id}")
 
     channel.basic_consume(queue=pagamento_queue, on_message_callback=pagamento_callback, auto_ack=True)
     channel.basic_consume(queue=bilhete_queue, on_message_callback=bilhete_callback, auto_ack=True)
     
     channel.start_consuming()
+
 
 def console_consultar():
     print("Faça uma reserva de cruzeiro!")
