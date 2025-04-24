@@ -4,7 +4,7 @@ from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 
-# MS Pagamento (4a - subscriber)
+# Funcionalidade (4a)
 def gerenciar_reserva():
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(host='localhost'))
@@ -29,6 +29,7 @@ def gerenciar_reserva():
     
     channel.start_consuming()
 
+# Funcionalidade (4b)
 def processar_pagamento(reserva_id):
     # Simula aprovação ou recusa aleatória
     aprovado = random.choice([True, False])
@@ -41,8 +42,7 @@ def processar_pagamento(reserva_id):
     key = RSA.import_key(open('keys/private_key.der').read())
     h = SHA256.new(mensagem.encode('utf-8'))
     assinatura = pkcs1_15.new(key).sign(h)
-    # Envio para RabbitMQ
-    print(f"Enviando {reserva_id} para {status}")
+
     connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
     channel = connection.channel()
     channel.exchange_declare(exchange='cruzeiros', exchange_type='direct')
