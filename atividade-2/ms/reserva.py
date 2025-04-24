@@ -1,7 +1,11 @@
+import base64
 import pika
 import uuid
 import pandas as pd
 import os
+from Crypto.PublicKey import RSA
+from Crypto.Signature import pkcs1_15
+from Crypto.Hash import SHA256
 
 def consultar_opcoes(destino, data_embarque, porto_embarque):
     try:
@@ -82,7 +86,7 @@ def realizar_reserva(destino, data_embarque, quantidade_passageiros, quantidade_
     channel.exchange_declare(exchange='cruzeiros', exchange_type='direct')
     reserva_id = str(uuid.uuid4())  
 
-    message = f"id={reserva_id}, destino={destino}, data_embarque={data_embarque}, quantidade_passageiros={quantidade_passageiros}, quantidade_cabines={quantidade_cabines}, valor_total={calcular_valor(data_embarque, destino, quantidade_passageiros)}"
+    message = f"id={reserva_id}"
 
     channel.basic_publish(
         exchange='cruzeiros', 
@@ -90,7 +94,77 @@ def realizar_reserva(destino, data_embarque, quantidade_passageiros, quantidade_
         body=message, 
     )
 
-    connection.close()    
+    connection.close()
+
+    andamento_reserva()  
+
+def remover_reserva(reserva_id):
+    file_path = 'reservas.csv'
+    if os.path.exists(file_path):
+        df = pd.read_csv(file_path)
+        df = df[df['id'] != reserva_id]
+        df.to_csv(file_path, index=False)
+        print(f"Reserva {reserva_id} removida com sucesso.")
+    else:
+        print("Arquivo de reservas não encontrado.")
+
+def andamento_reserva():
+
+    def verificar_assinatura(reserva_id, assinatura_b64):
+        chave_publica = RSA.import_key(open('public_key.pem').read())
+        hash_msg = SHA256.new(reserva_id.encode('utf-8'))
+
+        try:
+            pkcs1_15.new(chave_publica).verify(hash_msg, assinatura_b64)
+            return True
+        except (ValueError, TypeError):
+            return False
+    
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters(host='localhost'))
+    channel = connection.channel()
+
+    channel.exchange_declare(exchange='cruzeiros', exchange_type='direct')
+
+    result = channel.queue_declare(queue='', exclusive=True)
+    queue_name = result.method.queue
+    
+    for status in ['pagamento-aprovado', 'pagamento-recusado', 'bilhete-gerado']:
+        channel.queue_bind(
+            exchange='cruzeiros', queue=queue_name, routing_key=status)
+        
+    print('Aguardando atualização da reserva...')
+
+    def callback(ch, method, properties, body):
+        routing_key = method.routing_key
+        data = body.decode()
+        reserva_id, assinatura_b64 = data.split(":", 1)
+        print("Assinatura recebida: ", assinatura_b64)
+        assinatura = base64.b64decode(assinatura_b64)
+
+        if routing_key in ['pagamento-aprovado', 'pagamento-recusado']:
+            if not verificar_assinatura(reserva_id, assinatura):
+                print(f"[!] Assinatura inválida para {reserva_id}")
+                remover_reserva(reserva_id)
+                return
+
+        if routing_key == 'pagamento-aprovado':
+            print(f"[✔] Pagamento aprovado para reserva {reserva_id}")
+            # atualizar reserva no banco como 'pago'
+
+        elif routing_key == 'pagamento-recusado':
+            print(f"[✖] Pagamento recusado para reserva {reserva_id}")
+            remover_reserva(reserva_id)
+            channel.stop_consuming()
+            connection.close()
+
+        elif routing_key == 'bilhete-gerado':
+            print(f"[🎫] Bilhete gerado para reserva {reserva_id}")
+
+    channel.basic_consume(
+        queue=queue_name, on_message_callback=callback, auto_ack=True)
+    
+    channel.start_consuming()
 
 def console_consultar():
     print("Faça uma reserva de cruzeiro!")
