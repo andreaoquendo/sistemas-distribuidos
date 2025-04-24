@@ -33,9 +33,8 @@ def escutar_pagamentos():
     result = channel.queue_declare(queue='', exclusive=True)
     queue_name = result.method.queue
 
-    # Escuta pagamento-aprovado e pagamento-recusado
+    # Escuta pagamento-aprovado
     channel.queue_bind(exchange='cruzeiros', queue=queue_name, routing_key='pagamento-aprovado')
-    channel.queue_bind(exchange='cruzeiros', queue=queue_name, routing_key='pagamento-recusado')
 
     print('[MS Bilhete] Aguardando mensagens de pagamento...')
 
@@ -55,15 +54,14 @@ def escutar_pagamentos():
                 mensagem_bilhete = f"id={reserva_id}"
                 channel.basic_publish(exchange='cruzeiros', routing_key='bilhete-gerado', body=mensagem_bilhete)
                 print(f"[MS Bilhete] Confirmação publicada na fila 'bilhete-gerado'.")
-            elif method.routing_key == 'pagamento-recusado':
-                gerar_mensagem_recusa(reserva_id)
-                # ❗ Publica bilhete-nao-gerado
-                channel.queue_declare(queue='bilhete-nao-gerado')
-                mensagem = f"id={reserva_id}"
-                channel.basic_publish(exchange='cruzeiros', routing_key='bilhete-nao-gerado', body=mensagem)
-                print(f"[MS Bilhete] Confirmação publicada na fila 'bilhete-nao-gerado'.")
         else:
             print(f"[MS Bilhete] Assinatura inválida para reserva {reserva_id}. Ignorado.")
+            gerar_mensagem_recusa(reserva_id)
+            # ❗ Publica bilhete-nao-gerado
+            channel.queue_declare(queue='bilhete-nao-gerado')
+            mensagem = f"id={reserva_id}"
+            channel.basic_publish(exchange='cruzeiros', routing_key='bilhete-nao-gerado', body=mensagem)
+            print(f"[MS Bilhete] Confirmação publicada na fila 'bilhete-nao-gerado'.")
 
     channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
     channel.start_consuming()
