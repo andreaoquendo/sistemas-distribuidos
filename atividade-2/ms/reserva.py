@@ -145,7 +145,8 @@ def andamento_reserva():
     for status in ['pagamento-aprovado', 'pagamento-recusado']:
         channel.queue_bind(exchange='cruzeiros', queue=pagamento_queue, routing_key=status)
     
-    channel.queue_bind(exchange='cruzeiros', queue=bilhete_queue, routing_key='bilhete-gerado')
+    for status_bilhete in ['bilhete-gerado', 'bilhete-nao-gerado']:
+        channel.queue_bind(exchange='cruzeiros', queue=bilhete_queue, routing_key=status_bilhete)
         
     print('Aguardando atualização da reserva...')
 
@@ -171,16 +172,20 @@ def andamento_reserva():
             channel.stop_consuming()
             connection.close()
             return
-        elif routing_key == 'bilhete-gerado':
-            print(f"[🎫] Bilhete gerado para reserva {reserva_id}")
 
     def bilhete_callback(ch, method, properties, body):
+        routing_key = method.routing_key
         data = body.decode()
         reserva_id = data.split("=")[1]
+        
         if routing_key == 'bilhete-gerado':
             print(f"[✔] Bilhete gerado para reserva {reserva_id}")
+            channel.stop_consuming()
+            connection.close()
         elif routing_key == 'bilhete-nao-gerado':
             print(f"[x] Bilhete NÃO gerado para reserva {reserva_id}")
+            channel.stop_consuming()
+            connection.close()
 
     channel.basic_consume(queue=pagamento_queue, on_message_callback=pagamento_callback, auto_ack=True)
     channel.basic_consume(queue=bilhete_queue, on_message_callback=bilhete_callback, auto_ack=True)
