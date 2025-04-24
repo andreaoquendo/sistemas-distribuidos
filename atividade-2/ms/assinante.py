@@ -1,8 +1,9 @@
 import pika
 
+# Funcionalidade (2).
+# Estabelece conexão com a routing-key do exchange de acordo com o destino que o usuário escolher
 def receber_notificacoes(destinos):
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host='localhost'))
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
     channel = connection.channel()
 
     channel.exchange_declare(exchange='promocoes', exchange_type='direct')
@@ -11,16 +12,14 @@ def receber_notificacoes(destinos):
     queue_name = result.method.queue
     
     for destino in destinos:
-        channel.queue_bind(
-            exchange='promocoes', queue=queue_name, routing_key=destino)
+        channel.queue_bind(exchange='promocoes', queue=queue_name, routing_key=destino)
         
     print('Esperando por alertas...')
 
     def callback(ch, method, properties, body):
         print(body.decode())
 
-    channel.basic_consume(
-        queue=queue_name, on_message_callback=callback, auto_ack=True)
+    channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
     
     channel.start_consuming()
 
@@ -36,8 +35,10 @@ if __name__ == "__main__":
         destinos_escolhidos = [opcoes[i - 1] for i in indices if 1 <= i <= len(opcoes)]
         if not destinos_escolhidos:
             raise ValueError("Nenhum destino válido foi selecionado.")
+        
+        receber_notificacoes(destinos_escolhidos)
     except Exception as e:
         print(f"Erro: {e}")
         exit(1)
 
-    receber_notificacoes(destinos_escolhidos)
+    

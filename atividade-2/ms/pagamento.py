@@ -38,10 +38,9 @@ def processar_pagamento(reserva_id):
     mensagem = reserva_id
 
     #Assinatura
-    key = RSA.import_key(open('private_key.der').read())
+    key = RSA.import_key(open('keys/private_key.der').read())
     h = SHA256.new(mensagem.encode('utf-8'))
     assinatura = pkcs1_15.new(key).sign(h)
-    print()(f"Assinatura gerada: {base64.b64encode(assinatura).decode('utf-8')}")
     # Envio para RabbitMQ
     print(f"Enviando {reserva_id} para {status}")
     connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))

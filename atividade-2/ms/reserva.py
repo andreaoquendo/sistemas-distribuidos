@@ -7,6 +7,8 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA256
 
+# Funcionalidade (3a)
+# Função para consultar as opções dos cruzeiros disponíveis na planilha cruise_data, com base no destino
 def consultar_opcoes(destino, data_embarque, porto_embarque):
     try:
         dados_df = pd.read_excel('../path/to/cruise_data.xlsx', sheet_name='Página1')
@@ -15,7 +17,6 @@ def consultar_opcoes(destino, data_embarque, porto_embarque):
             print("Não foi possível consultar os dados.")
         
     except Exception as e:
-        erro_carregamento = str(e)
         print("Não foi possível consultar os dados.")
 
     if destino:
@@ -45,25 +46,30 @@ def consultar_opcoes(destino, data_embarque, porto_embarque):
     print(filtro.to_string(index=False))
     print("-"*100)
 
-def calcular_valor(data_embarque, destino, quantidade_cabines):
-    base_dir = os.path.abspath(os.path.dirname(__file__))
-    file_path = os.path.join(base_dir, '..', 'path/to/cruise_data.xlsx')
-    file_path = os.path.abspath(file_path)
-
-    df = pd.read_excel(file_path)
-    df['data_embarque'] = pd.to_datetime(df['data_embarque'], format='%d/%m/%Y')
-    data_embarque = pd.to_datetime(data_embarque, format='%d/%m/%Y')
-    filtered_data = df[(df['destino'] == destino) & (df['data_embarque'] == data_embarque)]
-
-    if not filtered_data.empty:
-        valor_pessoa = filtered_data.iloc[0]['valor_pessoa']
-        return valor_pessoa * quantidade_cabines
-    else:
-        raise ValueError("Destino ou data de embarque não encontrados na planilha.")
-
+# Funcionalidade (3b)
+# Função para realizar a reserva de um cruzeiro, salvando os dados em um arquivo CSV
+# e publicando uma mensagem na fila de reservas
 def realizar_reserva(destino, data_embarque, quantidade_passageiros, quantidade_cabines):
     file_path = 'reservas.csv'
 
+    # Procura na planilha cruise_data o valor do cruzeiro
+    def calcular_valor(data_embarque, destino, quantidade_cabines):
+        base_dir = os.path.abspath(os.path.dirname(__file__))
+        file_path = os.path.join(base_dir, '..', 'path/to/cruise_data.xlsx')
+        file_path = os.path.abspath(file_path)
+
+        df = pd.read_excel(file_path)
+        df['data_embarque'] = pd.to_datetime(df['data_embarque'], format='%d/%m/%Y')
+        data_embarque = pd.to_datetime(data_embarque, format='%d/%m/%Y')
+        filtered_data = df[(df['destino'] == destino) & (df['data_embarque'] == data_embarque)]
+
+        if not filtered_data.empty:
+            valor_cabine = filtered_data.iloc[0]['valor_cabine']
+            return valor_cabine * quantidade_cabines
+        else:
+            raise ValueError("Destino ou data de embarque não encontrados na planilha.")
+
+    # Salva a reserva no arquivo CSV
     reserva_data = {
         'id': [str(uuid.uuid4())],
         'destino': [destino],
@@ -72,13 +78,14 @@ def realizar_reserva(destino, data_embarque, quantidade_passageiros, quantidade_
         'quantidade_cabines': [quantidade_cabines],
         'valor_total': [calcular_valor(data_embarque, destino, quantidade_passageiros)]
     }
+
     df = pd.DataFrame(reserva_data)
     if os.path.exists(file_path):
         df.to_csv(file_path, mode='a', header=False, index=False)
     else:
         df.to_csv(file_path, index=False)
 
-    # DONE: Publicar uma mensagem na fila reserva-criada
+    # Publica uma mensagem na rota reserva-criada
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(host='localhost'))
     channel = connection.channel()
@@ -96,22 +103,25 @@ def realizar_reserva(destino, data_embarque, quantidade_passageiros, quantidade_
 
     connection.close()
 
+    # Começa a mostrar no console o andamento da reserva
     andamento_reserva()  
 
-def remover_reserva(reserva_id):
-    file_path = 'reservas.csv'
-    if os.path.exists(file_path):
-        df = pd.read_csv(file_path)
-        df = df[df['id'] != reserva_id]
-        df.to_csv(file_path, index=False)
-        print(f"Reserva {reserva_id} removida com sucesso.")
-    else:
-        print("Arquivo de reservas não encontrado.")
-
+# Funcionalidade (3c)
+# Acompanhar o status da reserva
 def andamento_reserva():
+    
+    def remover_reserva(reserva_id):
+        file_path = 'reservas.csv'
+        if os.path.exists(file_path):
+            df = pd.read_csv(file_path)
+            df = df[df['id'] != reserva_id]
+            df.to_csv(file_path, index=False)
+            print(f"Reserva {reserva_id} removida com sucesso.")
+        else:
+            print("Arquivo de reservas não encontrado.")
 
     def verificar_assinatura(reserva_id, assinatura_b64):
-        chave_publica = RSA.import_key(open('public_key.pem').read())
+        chave_publica = RSA.import_key(open('keys/public_key.pem').read())
         hash_msg = SHA256.new(reserva_id.encode('utf-8'))
 
         try:
@@ -120,49 +130,61 @@ def andamento_reserva():
         except (ValueError, TypeError):
             return False
     
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host='localhost'))
+    print("Faça seu pagamento...")
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
     channel = connection.channel()
 
     channel.exchange_declare(exchange='cruzeiros', exchange_type='direct')
 
-    result = channel.queue_declare(queue='', exclusive=True)
-    queue_name = result.method.queue
+    pagamento = channel.queue_declare(queue='', exclusive=True)
+    pagamento_queue = pagamento.method.queue
+
+    bilhete = channel.queue_declare(queue='', exclusive=True)
+    bilhete_queue = bilhete.method.queue
     
-    for status in ['pagamento-aprovado', 'pagamento-recusado', 'bilhete-gerado']:
-        channel.queue_bind(
-            exchange='cruzeiros', queue=queue_name, routing_key=status)
+    for status in ['pagamento-aprovado', 'pagamento-recusado']:
+        channel.queue_bind(exchange='cruzeiros', queue=pagamento_queue, routing_key=status)
+    
+    channel.queue_bind(exchange='cruzeiros', queue=bilhete_queue, routing_key='bilhete-gerado')
         
     print('Aguardando atualização da reserva...')
 
-    def callback(ch, method, properties, body):
+    def pagamento_callback(ch, method, properties, body):
         routing_key = method.routing_key
         data = body.decode()
         reserva_id, assinatura_b64 = data.split(":", 1)
-        print("Assinatura recebida: ", assinatura_b64)
         assinatura = base64.b64decode(assinatura_b64)
 
         if routing_key in ['pagamento-aprovado', 'pagamento-recusado']:
             if not verificar_assinatura(reserva_id, assinatura):
-                print(f"[!] Assinatura inválida para {reserva_id}")
+                print(f"Assinatura inválida para {reserva_id}")
+                print("Removendo reserva...")
                 remover_reserva(reserva_id)
                 return
 
         if routing_key == 'pagamento-aprovado':
-            print(f"[✔] Pagamento aprovado para reserva {reserva_id}")
-            # atualizar reserva no banco como 'pago'
-
+            print(f"Pagamento aprovado para reserva {reserva_id}")
+            print(f"Aguardando bilhete ser gerado...")
         elif routing_key == 'pagamento-recusado':
-            print(f"[✖] Pagamento recusado para reserva {reserva_id}")
+            print(f"Pagamento recusado para reserva {reserva_id}")
             remover_reserva(reserva_id)
             channel.stop_consuming()
             connection.close()
-
+            return
         elif routing_key == 'bilhete-gerado':
             print(f"[🎫] Bilhete gerado para reserva {reserva_id}")
+            
+    
+    def bilhete_callback(ch, method, properties, body):
+        data = body.decode()
+        print(f"[🎫] Bilhete gerado para reserva")
+        print(data)
+        channel.stop_consuming()
+        connection.close()
+        return
 
-    channel.basic_consume(
-        queue=queue_name, on_message_callback=callback, auto_ack=True)
+    channel.basic_consume(queue=pagamento_queue, on_message_callback=pagamento_callback, auto_ack=True)
+    channel.basic_consume(queue=bilhete_queue, on_message_callback=bilhete_callback, auto_ack=True)
     
     channel.start_consuming()
 
