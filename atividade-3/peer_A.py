@@ -5,14 +5,11 @@ import Pyro5.api
 @Pyro5.api.expose
 class PeerMaker(object):
     def __init__(self):
-        self.name = "peer1"
-        self.is_tracker = True
+        self.name = "peer2"
+        self.is_tracker = False
+
         self.tracker_uri = None
-        self.arquivos = {}
     
-    def cadastrar_arquivos(self, nome, arquivos):
-        self[nome] = arquivos
-        print(f"Arquivos cadastrados: {self.arquivos}")
     
     def get_is_tracker(self):
         print("Me perguntaram se eu sou o tracker")
@@ -25,7 +22,7 @@ class PeerMaker(object):
                 peer = Pyro5.api.Proxy(f"PYRONAME:peer2")
             else:
                 print("Tentar procurar o tracker 2")
-                peer = Pyro5.api.Proxy(f"PYRONAME:peer1")
+                peer =ON Pyro5.api.Proxy(f"PYRAME:peer1")
             
             print(f"Encontrou o tracker: {peer}")
             if peer.get_is_tracker():
@@ -33,6 +30,11 @@ class PeerMaker(object):
                 print(self.tracker_uri)
         else:
             print("Eu sou o tracker")
+    
+    def enviar_arquivos():
+        arquivos = ["foto.png", "video.mp4"]
+        self.tracker_uri.cadastrar_arquivos("peer2", arquivos)
+
 
     def server(self):
         daemon = Pyro5.server.Daemon()         # make a Pyro daemon
