@@ -2,7 +2,7 @@ import threading
 
 # saved as greeting-server.py
 import Pyro5.api
-@Pyro5.api.expose
+
 class PeerMaker(object):
     def __init__(self):
         self.name = "peer1"
@@ -10,10 +10,18 @@ class PeerMaker(object):
         self.tracker_uri = None
         self.arquivos = {}
     
+    @Pyro5.api.expose
     def cadastrar_arquivos(self, nome, arquivos):
-        self[nome] = arquivos
+        print("oiiiii")
+        try:
+            self.arquivos[nome] = arquivos
+        except Exception as e :
+            print("deu erro")
+            print(e)
+        
         print(f"Arquivos cadastrados: {self.arquivos}")
     
+    @Pyro5.api.expose
     def get_is_tracker(self):
         print("Me perguntaram se eu sou o tracker")
         return self.is_tracker
