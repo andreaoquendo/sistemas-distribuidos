@@ -28,7 +28,8 @@ class PeerMaker(object):
 
         # voting states
         self.current_state = State.TRACKER
-        self.epoch = 1
+        self.epoca = 1
+        self.votou
         
     ## TRACKER
     def send_heartbeat(self):
@@ -196,7 +197,19 @@ class PeerMaker(object):
                 except Exception as e:
                     print(f"Erro ao avisar novo tracker para {nome}: {e}")
 
+    @Pyro5.api.expose
+    def votar(self, epoca_candidato, nome_candidato):
+        if epoca_candidato > self.epoca:
+            self.epoca = epoca_candidato
+            self.votou = False  # permite votar na época "atual"
+
+        if not self.votou:
+            self.votou = True
+            return True
+        return False
+
     def iniciar_eleicao(self):
+        print(f"[{self.name}] Iniciando eleição...")
         self.state = Estado.CANDIDATO
         self.epoca += 1
         self.votos_recebidos = 1  # vota em si mesmo
