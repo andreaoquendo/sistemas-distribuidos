@@ -2,7 +2,6 @@ import threading
 import time
 from enum import Enum
 import random  # no topo do arquivo
-import base64
 
 
 # saved as greeting-server.py
@@ -16,10 +15,10 @@ class State(Enum):
 class PeerMaker(object):
     def __init__(self):
         # names
-        self.name = "PEER_B"
+        self.name = "PEER_A"
 
         # is the one tracking
-        self.is_tracker = False
+        self.is_tracker = True
         self.files = {}
         self.last_heartbeat = time.time()
 
@@ -43,7 +42,7 @@ class PeerMaker(object):
                     except Exception as e:
                         print(f"Erro ao enviar heartbeat para {name}: {e}")
                         ns.remove(name)
-            time.sleep(0.1)  # 100ms
+            time.sleep(0.2)  # 100ms
     
     ## TRACKER
     @Pyro5.api.expose
@@ -61,21 +60,16 @@ class PeerMaker(object):
     @Pyro5.api.oneway
     def receive_last_heartbeat(self):
         self.last_heartbeat = time.time()
-        # print(f"{time.time()} Recebi heartbeat em {self.name}")
+        # print(f"Recebi heartbeat em {self.name}")
     
     ## FOLLOWER
     def listen_heartbeat(self):
-        timeout = 1 # timeout - 3 ms
+        timeout = 0.3 # timeout - 3 ms
         while not self.is_tracker:
-            print(time.time())
-            print(self.last_heartbeat)
-            print(time.time() - self.last_heartbeat)
             if time.time() - self.last_heartbeat > timeout:
                 print(f"[{self.name}] Tracker falhou! Tentando eleição ou novo tracker...")
                 # Aqui você pode chamar sua lógica de eleição ou failover
                 break
-            else:
-                print("Going well here...")
             time.sleep(0.2)
 
     ## FOLLOWER
@@ -127,7 +121,6 @@ class PeerMaker(object):
                     if peer.get_is_tracker():
                         self.tracker_uri = peer
                         print(f"[{self.name}] Tracker encontrado: {name}")
-                        self.look_specific_file()
                         return
                 except Exception as e:
                     print(f"[{self.name}] Erro ao contatar {name}: {e}")
@@ -137,12 +130,17 @@ class PeerMaker(object):
         except Exception as e:
             print(f"[{self.name}] Erro ao localizar name server: {e}")
 
-    ## SENDER
+    ## SENDER atividade-3/fotinha.jpg
+    @Pyro5.api.callback
     @Pyro5.api.expose
     def get_file(self, filename):
+        print("Quiseram um arquivo daqui")
         try:
             with open(filename, "rb") as f:
                 content = f.read()
+            print("Enviando contéudo")
+            print(type(content))
+            print(content)
             return content
         except Exception as e:
             print(f"Erro ao ler o arquivo {filename}: {e}")
@@ -154,14 +152,9 @@ class PeerMaker(object):
             peer = Pyro5.api.Proxy(f"PYRONAME:{peer_name}")
             content = peer.get_file(filename)
 
-            print("Peguei conteúdo")
-            print(type(content))
-            print(content.keys())
-            dados = base64.b64decode(content['data'])
-
             if content:
                 with open(f"download_{filename}", "wb") as f:
-                    f.write(dados)
+                    f.write(content)
                 print(f"Arquivo {filename} recebido e salvo.")
             else:
                 print("Arquivo não encontrado ou erro na transferência.")
@@ -225,7 +218,7 @@ class PeerMaker(object):
             self.state = Estado.SEGUIDOR
 
     def look_specific_file(self):
-        self.download_file("PEER_A", "fotinha.jpg")
+        self.download_file("fotinha.jpg", "PEER_A")
 
     def run(self):
         server_thread = threading.Thread(target=self.server)
