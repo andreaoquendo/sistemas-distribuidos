@@ -197,25 +197,39 @@ class PeerMaker(object):
         ns = Pyro5.api.locate_ns()
         peers = ns.list()
 
-        for nome, uri in peers.items():
-            if nome != self.name:
+        for name, uri in peers.items():
+            if name != self.name and name != "Pyro.NameServer":
                 try:
                     peer = Pyro5.api.Proxy(uri)
-                    voto = peer.votar(self.epoca, self.name)
+                    voto = peer.vote(self.epoca, self.name)
                     if voto:
-                        self.votos_recebidos += 1
+                        self.received_votes += 1
                 except Exception as e:
-                    print(f"Erro ao pedir voto de {nome}: {e}")
+                    print(f"Erro ao pedir voto de {name}: {e}")
         
-        if self.votos_recebidos > len(peers) // 2:
+        # TO DO: tirar o maior igual
+        if self.received_votes >= len(peers) // 2:
             print(f"{self.name} virou TRACKER na época {self.epoca}")
-            self.state = Estado.TRACKER
-            self.is_tracker = True
+            print(f"Estou virando tracker 2")
+            self.state = State.TRACKER
             self.tracker_uri = None
-            self.anunciar_novo_tracker()
+            self.announce_new_tracker()
         else:
             print(f"{self.name} perdeu a eleição")
-            self.state = Estado.SEGUIDOR
+            self.state = State.FOLLOWER
+
+    @Pyro5.api.expose
+    def vote(self, candidate_epoch, candidate_name):
+        print(f"[{self.name}] Entrando na cabine de votação...")
+        if candidate_epoch > self.epoca:
+            self.epoca = candidate_epoch
+            self.voted = False  # permite votar na época "atual"
+
+        if not self.voted:
+            self.voted = True
+            return True
+        print(f"[{self.name}] Votou falso")
+        return False
 
     def look_specific_file(self):
         self.download_file("fotinha.jpg", "PEER_A")
