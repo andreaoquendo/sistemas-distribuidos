@@ -2,58 +2,52 @@ import threading
 import time
 from enum import Enum
 import random  # no topo do arquivo
-
+import os
 
 # saved as greeting-server.py
 import Pyro5.api
 
 class State(Enum):
-        CANDIDATE = 1
-        FOLLOWER = 2
-        TRACKER = 3
+    CANDIDATE = "ESTADO CANDIDATO"
+    FOLLOWER = "ESTADO SEGUIDOR"
+    TRACKER = "ESTADO TRACKER"
 
 class PeerMaker(object):
     def __init__(self):
         # names
-        self.name = "PEER_A"
+        self.name = "PEER_TESTE"
 
         # is the one tracking
-        self.is_tracker = True
         self.files = {}
         self.last_heartbeat = time.time()
 
         # is a follower
         self.tracker_uri = None
+        self.tracker_name = None
 
         # voting states
-        self.current_state = State.TRACKER
-        self.epoch = 1
+        print(f"Estou virando tracker 1")
+        self.state = State.FOLLOWER
+        self.epoca = 1
+        self.voted = False
+        
         
     ## TRACKER
     def send_heartbeat(self):
-        while self.is_tracker:
+        print(f"[{self.name}] Listen to my heart")
+        while self.state == State.TRACKER:
             ns = Pyro5.api.locate_ns()
             all_peers = ns.list()
             for name, uri in all_peers.items():
                 if name != self.name and name != "Pyro.NameServer":
                     try:
                         peer = Pyro5.api.Proxy(uri)
+                        # print(f"ESTADO: {self.state}")
                         peer.receive_last_heartbeat()
                     except Exception as e:
                         print(f"Erro ao enviar heartbeat para {name}: {e}")
                         ns.remove(name)
-            time.sleep(0.2)  # 100ms
-    
-    ## TRACKER
-    @Pyro5.api.expose
-    def record_files(self, name, file_names):
-        try:
-            self.files[name] = file_names
-        except Exception as e :
-            print("Error while trying to record file location")
-            print(e)
-        
-        print(f"Files recorded: {self.arquivos}")
+            time.sleep(0.05)  # 100ms
 
     ## FOLLOWER - HEARTBEAT
     @Pyro5.api.expose
@@ -64,13 +58,17 @@ class PeerMaker(object):
     
     ## FOLLOWER
     def listen_heartbeat(self):
-        timeout = 0.3 # timeout - 3 ms
-        while not self.is_tracker:
-            if time.time() - self.last_heartbeat > timeout:
+        timeout = random.uniform(0.15, 0.3) 
+        while self.state == State.FOLLOWER:
+            
+            elapsed = time.time() - self.last_heartbeat
+
+            if elapsed > timeout:
                 print(f"[{self.name}] Tracker falhou! Tentando eleição ou novo tracker...")
-                # Aqui você pode chamar sua lógica de eleição ou failover
+                self.start_election()
                 break
-            time.sleep(0.2)
+
+            time.sleep(0.1)
 
     ## FOLLOWER
     @Pyro5.api.expose
@@ -82,28 +80,47 @@ class PeerMaker(object):
                 if(filename == target_file):
                     return peer_name
         
-        return "-1"
+        return ""
 
     ## FOLLOWER 
     def send_files(self):
-        arquivos = ["foto.png", "video.mp4"]
-        print(f"[{self.name}] Tentando enviar arquivos")
-        self.tracker_uri.cadastrar_arquivos(self.name, arquivos)
+        path = "."
+        current_files = set(os.listdir(path))
+        print(f"[{self.name}] Tentando cadastrar arquivos")
+        self.tracker_uri.register_files(self.name, list(current_files))
+    
+    ## TRACKER
+    @Pyro5.api.expose
+    def register_files(self, peer_name, filenames):
+        print(f"[{self.name}] Tentando registrar arquivos de {peer_name}")
+        try:
+            self.files[peer_name] = filenames
+        except Exception as e :
+            print(f"[{self.name}] Erro ao tentar registrar arquivos de {peer_name}")
 
-    ## FOLLOWER
-    def check_files(self, filename):
-        print("Consultando arquivos...")
-        print("aqui esta o resultado:" + self.tracker_uri.search_file(filename))
+        print(f"Arquivos cadastrados: {self.files}")
+    
+    def register_own_files(self):
+        print(f"[{self.name}] Tentando registrar meus próprios arquivos")
+
+        path = "."
+        current_files = set(os.listdir(path))
+        try:
+            self.files[self.name] = list(current_files)
+        except Exception as e :
+            print(f"[{self.name}] Erro ao tentar registrar meus próprios arquivos")
+
+        print(f"Arquivos cadastrados: {self.files}")
 
     ## EVERY PEER
     @Pyro5.api.expose
     def get_is_tracker(self):
         print("Me perguntaram se eu sou o tracker")
-        return self.is_tracker
+        return self.state == State.TRACKER
     
     ## EVERY PEER
     def search_tracker(self):
-        if self.is_tracker:
+        if self.state == State.TRACKER:
             print(f"[{self.name}] Eu sou o tracker.")
             return
 
@@ -120,12 +137,23 @@ class PeerMaker(object):
                     peer = Pyro5.api.Proxy(uri)
                     if peer.get_is_tracker():
                         self.tracker_uri = peer
+                        self.tracker_name = name
+                        self.send_files()
                         print(f"[{self.name}] Tracker encontrado: {name}")
                         return
                 except Exception as e:
                     print(f"[{self.name}] Erro ao contatar {name}: {e}")
             
             print(f"[{self.name}] Nenhum tracker encontrado.")
+            
+            if self.epoca == 1:
+                self.state = State.TRACKER
+                self.register_own_files()
+                print(f"[{self.name}] Eu sou o tracker agora.")
+                heartbeat_thread = threading.Thread(target=self.send_heartbeat)
+                heartbeat_thread.start()
+            else:
+                self.start_election()
         
         except Exception as e:
             print(f"[{self.name}] Erro ao localizar name server: {e}")
@@ -164,35 +192,45 @@ class PeerMaker(object):
     def server(self):
         daemon = Pyro5.server.Daemon()       
         ns = Pyro5.api.locate_ns()
-        uri = daemon.register(PeerMaker)
+        uri = daemon.register(self)
         ns.register(self.name, uri)
 
         print("Ready.")
         daemon.requestLoop()
     
     @Pyro5.api.expose
-    def atualizar_tracker(self, nome_tracker):
-        print(f"{self.name} agora reconhece {nome_tracker} como novo tracker")
-        self.tracker_uri = Pyro5.api.Proxy(f"PYRONAME:{nome_tracker}")
-        self.is_tracker = False
-        self.state = Estado.SEGUIDOR
+    def update_tracker(self, tracker_name):
+        print(f"{self.name} agora reconhece {tracker_name} como novo tracker na epoca {self.epoca}")
+        self.tracker_uri = Pyro5.api.Proxy(f"PYRONAME:{tracker_name}")
+        self.tracker_name = tracker_name
+        self.state = State.FOLLOWER
 
-    def anunciar_novo_tracker(self):
+        self.send_files()
+        
+        # start listening to heartbeat
+        escuta_thread = threading.Thread(target=self.listen_heartbeat)
+        escuta_thread.start()
+        # enviar as coisas dele pro tracker
+
+
+    def announce_new_tracker(self):
         ns = Pyro5.api.locate_ns()
         peers = ns.list()
 
-        for nome, uri in peers.items():
-            if nome != self.name:
+        for name, uri in peers.items():
+            if name != self.name and name != "Pyro.NameServer":
                 try:
                     peer = Pyro5.api.Proxy(uri)
-                    peer.atualizar_tracker(self.name)
+                    peer.update_tracker(self.name)
                 except Exception as e:
-                    print(f"Erro ao avisar novo tracker para {nome}: {e}")
+                    print(f"Erro ao avisar novo tracker para {name}: {e}")
 
-    def iniciar_eleicao(self):
-        self.state = Estado.CANDIDATO
+    def start_election(self):
+        print(f"[{self.name}] Iniciando eleição...")
+        self.state = State.CANDIDATE
         self.epoca += 1
-        self.votos_recebidos = 1  # vota em si mesmo
+        # self.voto = self.name  # vota em si mesmo
+        self.received_votes = 1  # vota em si mesmo
 
         ns = Pyro5.api.locate_ns()
         peers = ns.list()
@@ -212,7 +250,11 @@ class PeerMaker(object):
             print(f"{self.name} virou TRACKER na época {self.epoca}")
             print(f"Estou virando tracker 2")
             self.state = State.TRACKER
+            self.register_own_files()
             self.tracker_uri = None
+            self.tracker_name = None
+            heartbeat_thread = threading.Thread(target=self.send_heartbeat)
+            heartbeat_thread.start()
             self.announce_new_tracker()
         else:
             print(f"{self.name} perdeu a eleição")
@@ -233,18 +275,43 @@ class PeerMaker(object):
 
     def look_specific_file(self):
         self.download_file("fotinha.jpg", "PEER_A")
-
+    
+    def ask_for_files(self):
+        print()
+        while(True):
+            print("Vamos procurar um arquivo?")
+            filename = input("Nome do arquivo: ")
+            location = ""
+            if self.state == State.FOLLOWER:
+                tracker_proxy = Pyro5.api.Proxy(f"PYRONAME:{self.tracker_name}")
+                location = tracker_proxy.search_file(filename)
+                print("Localização do arquivo procurado:")
+                print(location)
+                # location = self.tracker_uri.search_file(filename)
+            elif self.state == State.TRACKER:
+                location = self.search_file(filename)
+            else:
+                print("Aguarde as eleições...")
+            
+            if location != "" or location == self.name:
+                continue
+            
+            self.download_file(location, filename)
+            
+            
     def run(self):
         server_thread = threading.Thread(target=self.server)
         client_thread = threading.Thread(target=self.search_tracker)
+        user_input_thread = threading.Thread(target=self.ask_for_files)
 
         server_thread.start()
         client_thread.start()
+        user_input_thread.start()
 
-        if self.is_tracker:
+        if self.state == State.TRACKER:
             heartbeat_thread = threading.Thread(target=self.send_heartbeat)
             heartbeat_thread.start()
-        else:
+        elif self.state == State.FOLLOWER:
             escuta_thread = threading.Thread(target=self.listen_heartbeat)
             escuta_thread.start()
 
