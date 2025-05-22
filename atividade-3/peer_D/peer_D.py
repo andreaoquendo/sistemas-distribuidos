@@ -3,7 +3,7 @@ import time
 from enum import Enum
 import random  # no topo do arquivo
 import os
-
+import base64
 # saved as greeting-server.py
 import Pyro5.api
 
@@ -176,13 +176,15 @@ class PeerMaker(object):
     
     ## RECEIVER
     def download_file(self, peer_name, filename):
+        print(f"[{self.name}] Procurando {filename} no peer {peer_name}")
         try:
             peer = Pyro5.api.Proxy(f"PYRONAME:{peer_name}")
             content = peer.get_file(filename)
+            data = base64.b64decode(content['data'])
 
             if content:
                 with open(f"download_{filename}", "wb") as f:
-                    f.write(content)
+                    f.write(data)
                 print(f"Arquivo {filename} recebido e salvo.")
             else:
                 print("Arquivo não encontrado ou erro na transferência.")
@@ -285,15 +287,15 @@ class PeerMaker(object):
             if self.state == State.FOLLOWER:
                 tracker_proxy = Pyro5.api.Proxy(f"PYRONAME:{self.tracker_name}")
                 location = tracker_proxy.search_file(filename)
+                # location = self.tracker_uri.search_file(filename)
                 print("Localização do arquivo procurado:")
                 print(location)
-                # location = self.tracker_uri.search_file(filename)
             elif self.state == State.TRACKER:
                 location = self.search_file(filename)
             else:
                 print("Aguarde as eleições...")
             
-            if location != "" or location == self.name:
+            if location == "" or location == self.name:
                 continue
             
             self.download_file(location, filename)
