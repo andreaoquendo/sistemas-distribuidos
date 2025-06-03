@@ -4,7 +4,6 @@ from enum import Enum
 import random  # no topo do arquivo
 import os
 import base64
-# saved as greeting-server.py
 import Pyro5.api
 
 class State(Enum):
@@ -35,6 +34,7 @@ class PeerMaker(object):
     ## TRACKER
     def send_heartbeat(self):
         print(f"[{self.name}] Listen to my heart")
+
         while self.state == State.TRACKER:
             ns = Pyro5.api.locate_ns()
             all_peers = ns.list()
@@ -43,7 +43,7 @@ class PeerMaker(object):
                     try:
                         peer = Pyro5.api.Proxy(uri)
                         # print(f"ESTADO: {self.state}")
-                        peer.receive_last_heartbeat()
+                        peer.receive_last_heartbeat(self.epoca, self.name)
                     except Exception as e:
                         print(f"Erro ao enviar heartbeat para {name}: {e}")
                         ns.remove(name)
@@ -52,7 +52,18 @@ class PeerMaker(object):
     ## FOLLOWER - HEARTBEAT
     @Pyro5.api.expose
     @Pyro5.api.oneway
-    def receive_last_heartbeat(self):
+    def receive_last_heartbeat(self, epoca, tracker_name):
+        if epoca > self.epoca:
+            print(f"{self.name} agora reconhece {tracker_name} como novo tracker na epoca {self.epoca}")
+            self.epoca = epoca
+            self.tracker_uri = Pyro5.api.Proxy(f"PYRONAME:{tracker_name}")
+            self.tracker_name = tracker_name
+            self.state = State.FOLLOWER
+
+            self.send_files(self.tracker_uri)
+            escuta_thread = threading.Thread(target=self.listen_heartbeat)
+            escuta_thread.start()
+
         self.last_heartbeat = time.time()
         # print(f"Recebi heartbeat em {self.name}")
     
@@ -69,6 +80,7 @@ class PeerMaker(object):
                 break
 
             time.sleep(0.1)
+    
 
     ## FOLLOWER
     @Pyro5.api.expose
@@ -83,11 +95,11 @@ class PeerMaker(object):
         return ""
 
     ## FOLLOWER 
-    def send_files(self):
+    def send_files(self, tracker_uri):
         path = "."
         current_files = set(os.listdir(path))
         print(f"[{self.name}] Tentando cadastrar arquivos")
-        self.tracker_uri.register_files(self.name, list(current_files))
+        tracker_uri.register_files(self.name, list(current_files))
     
     ## TRACKER
     @Pyro5.api.expose
@@ -138,7 +150,7 @@ class PeerMaker(object):
                     if peer.get_is_tracker():
                         self.tracker_uri = peer
                         self.tracker_name = name
-                        self.send_files()
+                        self.send_files(self.tracker_uri)
                         print(f"[{self.name}] Tracker encontrado: {name}")
                         return
                 except Exception as e:
@@ -199,33 +211,7 @@ class PeerMaker(object):
 
         print("Ready.")
         daemon.requestLoop()
-    
-    @Pyro5.api.expose
-    def update_tracker(self, tracker_name):
-        print(f"{self.name} agora reconhece {tracker_name} como novo tracker na epoca {self.epoca}")
-        self.tracker_uri = Pyro5.api.Proxy(f"PYRONAME:{tracker_name}")
-        self.tracker_name = tracker_name
-        self.state = State.FOLLOWER
 
-        self.send_files()
-        
-        # start listening to heartbeat
-        escuta_thread = threading.Thread(target=self.listen_heartbeat)
-        escuta_thread.start()
-        # enviar as coisas dele pro tracker
-
-
-    def announce_new_tracker(self):
-        ns = Pyro5.api.locate_ns()
-        peers = ns.list()
-
-        for name, uri in peers.items():
-            if name != self.name and name != "Pyro.NameServer":
-                try:
-                    peer = Pyro5.api.Proxy(uri)
-                    peer.update_tracker(self.name)
-                except Exception as e:
-                    print(f"Erro ao avisar novo tracker para {name}: {e}")
 
     def start_election(self):
         print(f"[{self.name}] Iniciando eleição...")
@@ -257,7 +243,6 @@ class PeerMaker(object):
             self.tracker_name = None
             heartbeat_thread = threading.Thread(target=self.send_heartbeat)
             heartbeat_thread.start()
-            self.announce_new_tracker()
         else:
             print(f"{self.name} perdeu a eleição")
             self.state = State.FOLLOWER
@@ -266,7 +251,7 @@ class PeerMaker(object):
     def vote(self, candidate_epoch, candidate_name):
         print(f"[{self.name}] Entrando na cabine de votação...")
         if candidate_epoch > self.epoca:
-            self.epoca = candidate_epoch
+            # self.epoca = candidate_epoch
             self.voted = False  # permite votar na época "atual"
 
         if not self.voted:
@@ -287,6 +272,7 @@ class PeerMaker(object):
             if self.state == State.FOLLOWER:
                 tracker_proxy = Pyro5.api.Proxy(f"PYRONAME:{self.tracker_name}")
                 location = tracker_proxy.search_file(filename)
+                self.send_files(tracker_proxy)
                 # location = self.tracker_uri.search_file(filename)
                 print("Localização do arquivo procurado:")
                 print(location)
