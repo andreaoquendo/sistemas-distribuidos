@@ -1,5 +1,53 @@
 import pika, os, base64
 import pandas
+from enum import Enum
+
+class TipoReserva(Enum):
+    CANCELAMENTO = "reserva_cancelada"
+    AGENDAMENTO = "reserva_criada"
+
+def procurar_info_cabines(reserva_id):
+    reservas_file_path = os.path.join(base_dir, '..', 'reservas.csv')
+    reservas_file_path = os.path.abspath(reservas_file_path)
+    reservas_df = pandas.read_csv(reservas_file_path)
+
+    reserva = reservas_df[reservas_df['reserva_id'] == reserva_id]
+
+    if reserva.empty:
+        print(f"[MS Itinerarios] Reserva com ID {reserva_id} não encontrada.")
+        return
+    num_cabines = int(reserva['quantidade_cabines'])
+    cruzeiro_id = reserva['cruzeiro_id']
+
+    return {
+        'num_cabines': num_cabines,
+        'cruzeiro_id': cruzeiro_id
+    }
+
+def alterar_quantidade_cabines(cruzeiro_id, num_cabines, motivo):
+    base_dir = os.path.abspath(os.path.dirname(__file__))
+    file_path = os.path.join(base_dir, '..', 'cruise_data.xlsx')
+    file_path = os.path.abspath(file_path)
+
+    df = pandas.read_excel(file_path)
+
+    # Localiza a linha com o cruzeiro_id correspondente
+    cruzeiro = df[df['cruzeiro_id'] == cruzeiro_id]
+
+    if cruzeiro.empty:
+        print(f"[MS Itinerarios] Cruzeiro com ID {cruzeiro_id} não encontrado.")
+        return
+
+    # Atualiza a quantidade de cabines
+    index = cruzeiro.index[0]
+    if motivo == TipoReserva.AGENDAMENTO.value:
+        df.at[index, 'quantidade_cabines'] -= num_cabines
+    elif motivo == TipoReserva.CANCELAMENTO.value:
+        df.at[index, 'quantidade_cabines'] += num_cabines
+
+    # Salva as alterações no arquivo
+    df.to_excel(file_path, index=False)
+    print(f"[MS Itinerarios] Quantidade de cabines atualizada para o cruzeiro {cruzeiro_id}.")
 
 def escutar_reservas():
     connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
@@ -12,7 +60,7 @@ def escutar_reservas():
     channel.queue_bind(exchange='cruzeiros', queue=queue_name, routing_key='reserva_criada')
     channel.queue_bind(exchange='cruzeiros', queue=queue_name, routing_key='reserva_cancelada')
 
-    print('[MS Itinerarios] Aguardando mensagens de pagamento...')
+    print('[MS Itinerarios] Aguardando mensagens de reserva...')
 
     def callback(ch, method, properties, body):
         mensagem = body.decode()
@@ -21,15 +69,23 @@ def escutar_reservas():
         except ValueError:
             print("[MS Itinerarios] Erro no formato da mensagem recebida.")
             return
+        # 1. Ve o que tem na reserva, ve o id do cruzeiro e a quantidade de cabines
+
+        
+
+        numero_cabines = reserva.iloc[0]['numero_cabines']
+
+        base_dir = os.path.abspath(os.path.dirname(__file__))
+        file_path = os.path.join(base_dir, '..', 'cruise_data.xlsx')
+        file_path = os.path.abspath(file_path)
+        df = pd.read_excel(file_path)
 
         # precisa somente a reserva id
+        cruzeiro_id, num_cabines = procurar_info_cabines(reserva_id)
         if method.routing_key == 'reserva-criada':
-            # TODO: altera quantidade de cabines
-            pass
+            alterar_quantidade_cabines(cruzeiro_id, num_cabines, TipoReserva.AGENDAMENTO)           
         elif method.routing_key == 'reserva-cancelada':
-            # TODO: aumenta quantidade de cabiens
-            # TODO: deletar reserva -> no ms reserva a gente só "desativa"
-            pass
+            alterar_quantidade_cabines(cruzeiro_id, num_cabines, TipoReserva.CANCELAMENTO)
 
     channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
     channel.start_consuming()
