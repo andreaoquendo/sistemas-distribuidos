@@ -7,6 +7,12 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA256
 
+#TODO Verificar Itinerario REST com MS_Itinerários
+#TODO Cancelar reserva
+#TODO Cadastrar interesse em promoções
+#TODO Cancelar cadastro em promoções
+#TODO Requisitar link de pagamento por REST ao MS_Pagamento
+
 # Funcionalidade (3a)
 # Função para consultar as opções dos cruzeiros disponíveis na planilha cruise_data, com base no destino
 def consultar_opcoes(destino, data_embarque, porto_embarque):
