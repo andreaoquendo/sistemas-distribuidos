@@ -11,6 +11,7 @@ from Crypto.Hash import SHA256
 #TODO Cancelar reserva
 #TODO Cadastrar interesse em promoções
 #TODO Cancelar cadastro em promoções
+#TODO Reserva escuta promoções
 #TODO Requisitar link de pagamento por REST ao MS_Pagamento
 
 # Funcionalidade (3a)
