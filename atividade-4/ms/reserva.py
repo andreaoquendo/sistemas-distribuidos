@@ -7,10 +7,10 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA256
 
+interesses_promocoes = set()
+
 #TODO Verificar Itinerario REST com MS_Itinerários
 #TODO Cancelar reserva
-#TODO Cadastrar interesse em promoções
-#TODO Cancelar cadastro em promoções
 #TODO Reserva escuta promoções
 #TODO Requisitar link de pagamento por REST ao MS_Pagamento
 
@@ -199,6 +199,13 @@ def andamento_reserva():
     
     channel.start_consuming()
 
+def cancelar_reserva(reserva_id):
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+    channel = connection.channel()
+    channel.exchange_declare(exchange='cruzeiros', exchange_type='direct')
+    mensagem = f"reserva={reserva_id}"
+    channel.basic_publish(exchange='cruzeiros', routing_key='reserva-cancelada', body=mensagem)
+    connection.close()
 
 def console_consultar():
     print("Faça uma reserva de cruzeiro!")

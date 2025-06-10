@@ -1,5 +1,10 @@
 from flask import Flask
 from flask import request, jsonify
+from ms.reserva import {
+    cancelar_reserva()
+}
+
+interesses_promocoes = set()
 
 app = Flask(__name__)
 
@@ -13,15 +18,30 @@ def consultar_disponibilidade():
 
 @app.route("/cancelar-reserva/<reserva_id>", methods=["DELETE"])
 def cancelar_reserva(reserva_id):
-    return f"<p>Reserva {reserva_id} cancelada com sucesso!</p>"
+    cancelar_reserva(reserva_id)
+    return  jsonify({
+        "mensagem": f"Reserva {reserva_id} cancelada com sucesso!"
+    }), 200
 
 @app.route("/promocoes", methods=["POST"])
-def interagir_promocoes():
-    return "<p>Promoção interagida com sucesso!</p>"
+def registrar_interesse():
+    dados = request.get_json()
+    user_id = dados.get('user_id')
+    if not usuario_id:
+        return jsonify({'erro': 'user_id é obrigatório'}), 400
+    interesses_promocoes.add(user_id)
+    return jsonify({
+        "mensagem": f"Cadastro de interesse em promoções para {user_id} concluído com sucesso!"
+    }), 200
 
 @app.route("/cancelar-promocao/<user_id>", methods=["DELETE"])
-def cancelar_promocao(user_id):
-    return f"<p>Promoção {user_id} cancelada com sucesso!</p>"
+def cancelar_interesse(user_id):
+    if usuario_id in interesses_promocoes:
+        interesses_promocoes.discard(user_id)
+        sse_subscribers.pop(user_id, None)
+        return '', 200
+    else:
+        return jsonify({'erro': 'Cadastro de interesse não encontrado'}), 404
 
 @app.route("/reservar", methods=["POST"])
 def reservar_itinerario(itinerario_id):
