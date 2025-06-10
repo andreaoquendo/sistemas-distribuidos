@@ -1,15 +1,43 @@
+import threading
 import pika, os, base64
-import pandas
+import pandas as pd
 from enum import Enum
+from flask import Flask
+from flask import request, jsonify
+
 
 class TipoReserva(Enum):
     CANCELAMENTO = "reserva_cancelada"
     AGENDAMENTO = "reserva_criada"
 
+def consultar_cruzeiro(destino, data_embarque, porto_embarque):
+    base_dir = os.path.abspath(os.path.dirname(__file__))
+    file_path = os.path.join(base_dir , 'cruise_data.xlsx')
+    file_path = os.path.abspath(file_path)
+
+    df = pd.read_excel(file_path)
+
+    # Filtra os cruzeiros com base nos critérios fornecidos
+    cruzeiros_filtrados = df
+
+    if destino is not None:
+        cruzeiros_filtrados = cruzeiros_filtrados[cruzeiros_filtrados['Destino'] == destino]
+    if data_embarque is not None:
+        cruzeiros_filtrados = cruzeiros_filtrados[cruzeiros_filtrados['Data de Embarque'] == data_embarque]
+    if porto_embarque is not None:
+        cruzeiros_filtrados = cruzeiros_filtrados[cruzeiros_filtrados['Porto Embarque'] == porto_embarque]
+
+    if cruzeiros_filtrados.empty:
+        print("[MS Itinerarios] Nenhum cruzeiro encontrado com os critérios fornecidos.")
+        return []
+
+    return cruzeiros_filtrados['id'].tolist()
+
 def procurar_info_cabines(reserva_id):
+    base_dir = os.path.abspath(os.path.dirname(__file__))
     reservas_file_path = os.path.join(base_dir, '..', 'reservas.csv')
     reservas_file_path = os.path.abspath(reservas_file_path)
-    reservas_df = pandas.read_csv(reservas_file_path)
+    reservas_df = pd.read_csv(reservas_file_path)
 
     reserva = reservas_df[reservas_df['reserva_id'] == reserva_id]
 
@@ -29,7 +57,7 @@ def alterar_quantidade_cabines(cruzeiro_id, num_cabines, motivo):
     file_path = os.path.join(base_dir, '..', 'cruise_data.xlsx')
     file_path = os.path.abspath(file_path)
 
-    df = pandas.read_excel(file_path)
+    df = pd.read_excel(file_path)
 
     # Localiza a linha com o cruzeiro_id correspondente
     cruzeiro = df[df['cruzeiro_id'] == cruzeiro_id]
@@ -91,4 +119,20 @@ def escutar_reservas():
     channel.start_consuming()
 
 if __name__ == "__main__":
-    escutar_reservas()
+    app = Flask(__name__)
+
+    @app.route("/consultar-itinerarios", methods=["GET"])
+    def consultar_itinerarios():
+        print(request.args)
+        destino = request.args.get('destino') or None
+        data_embarque = request.args.get('data_embarque') or None
+        porto_embarque = request.args.get('porto_embarque') or None 
+        
+        cruzeiros = consultar_cruzeiro(destino, data_embarque, porto_embarque)
+        return jsonify({'cruzeiros': cruzeiros})
+
+    thread_reservas = threading.Thread(target=escutar_reservas, daemon=True)
+    thread_reservas.start()
+
+    app.run(debug=True, port=5001)
+

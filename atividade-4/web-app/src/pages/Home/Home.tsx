@@ -34,6 +34,11 @@ const Home = () => {
       <GlobalStyle />
       <S.PageContainer>
         <S.HomeContainer>
+          <h1 style={{ marginBottom: "12px" }}>Discover Your Perfect Cruise</h1>
+          <span style={{ marginBottom: "24px" }}>
+            From tropical paradises to cultural odysseys, find the cruise that
+            matches your dreams.
+          </span>
           <S.CardsContainer>
             {fakeCruiseCards.map((card, index) => (
               <CruiseCard

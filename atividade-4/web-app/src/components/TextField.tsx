@@ -1,4 +1,10 @@
 import styled from "styled-components";
+import GlobalStyle from "../constants/GlobalStyle.styles";
+
+const TextFieldLabel = styled.span`
+  color: #020817;
+  text-align: left;
+`;
 
 const TextFieldContainer = styled.input`
   width: 100%;
@@ -10,20 +16,36 @@ const TextFieldContainer = styled.input`
   transition: border-color 0.2s;
 `;
 
+const Container = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-text: left;
+  width: 100%;
+  justify-content: center;
+  gap: 8px;
+`;
+
 interface TextFieldProps {
+  label?: string;
   value: string;
   placeholder?: string;
   onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-const TextField = ({ value, placeholder, onChange }: TextFieldProps) => {
+const TextField = ({ label, value, placeholder, onChange }: TextFieldProps) => {
   return (
-    <TextFieldContainer
-      value={value}
-      onChange={onChange}
-      type="text"
-      placeholder={placeholder}
-    />
+    <>
+      <GlobalStyle />
+      <Container>
+        <TextFieldLabel>{label}</TextFieldLabel>
+        <TextFieldContainer
+          value={value}
+          onChange={onChange}
+          type="text"
+          placeholder={placeholder}
+        />
+      </Container>
+    </>
   );
 };
 

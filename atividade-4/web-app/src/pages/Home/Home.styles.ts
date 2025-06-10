@@ -6,6 +6,8 @@ export const PageContainer = styled.div`
   align-items: center;
   justify-content: center;
   width: 100%;
+  padding-top: 36px;
+  background-color: #f2f8ff;
 `;
 
 export const HomeContainer = styled.div`
