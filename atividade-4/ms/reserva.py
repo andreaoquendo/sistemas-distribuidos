@@ -225,6 +225,7 @@ def cancelar_reserva(reserva_id):
     channel = connection.channel()
     channel.exchange_declare(exchange='cruzeiros', exchange_type='direct')
     mensagem = f"reserva={reserva_id}"
+    print(f"[CANCELAMENTO] Cancelando reserva {reserva_id}")
     channel.basic_publish(exchange='cruzeiros', routing_key='reserva-cancelada', body=mensagem)
     connection.close()
 
@@ -335,11 +336,18 @@ def reservar_itinerario():
     realizar_reserva(cruzeiro_id, user_id, num_pessoas, num_cabines)
     return jsonify({
         "mensagem": f"Itinerário {cruzeiro_id} reservado com sucesso!",
+        "cruzeiro_id": cruzeiro_id,
         "user_id": user_id,
         "numero_cabines": num_cabines,
         "numero_pessoas": num_pessoas
     }), 200
 
+@app.route("/cancelar-reserva/<reserva_id>", methods=["DELETE"])
+def cancelar_reserva_rest(reserva_id):
+    cancelar_reserva(reserva_id)
+    return  jsonify({
+        "mensagem": f"Reserva {reserva_id} cancelada com sucesso!"
+    }), 200
 
 if __name__ == "__main__":
 

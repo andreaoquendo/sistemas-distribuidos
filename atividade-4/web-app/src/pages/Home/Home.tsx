@@ -24,6 +24,8 @@ const Home = () => {
   const [cruises, setCruises] = useState<Cruise[]>([]);
   const [selectedCruise, setSelectedCruise] = useState<Cruise | null>(null);
 
+  const [reservaId, setReservaId] = useState<string>("");
+
   const [data, setData] = useState({
     destino: "",
     data_embarque: "",
@@ -60,6 +62,19 @@ const Home = () => {
     }
   };
 
+  const cancelReserva = async (reservaId: string) => {
+    try {
+      const response = await axios.delete(
+        `http://127.0.0.1:5002/cancelar-reserva/${reservaId}`
+      );
+      console.log("Reserva cancelada:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao cancelar reserva:", error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     fetchCruises();
   }, []);
@@ -68,53 +83,80 @@ const Home = () => {
       <GlobalStyle />
       <S.PageContainer>
         <S.HomeContainer>
-          <h2>Cruises: {cruises.length}</h2>
-          <h1 style={{ marginBottom: "12px" }}>Discover Your Perfect Cruise</h1>
-          <span style={{ marginBottom: "24px" }}>
-            From tropical paradises to cultural odysseys, find the cruise that
-            matches your dreams.
-          </span>
+          <S.Section>
+            <h1>Discover Your Perfect Cruise</h1>
+            <span style={{ marginBottom: "24px" }}>
+              From tropical paradises to cultural odysseys, find the cruise that
+              matches your dreams.
+            </span>
 
-          <S.SearchContainer>
-            <TextField
-              label="Destino"
-              name="destino"
-              value={data.destino}
-              onChange={handleChange}
-              placeholder="Digite o destino"
-            />
+            <S.SearchContainer>
+              <TextField
+                label="Destino"
+                name="destino"
+                value={data.destino}
+                onChange={handleChange}
+                placeholder="Digite o destino"
+              />
 
-            <TextField
-              label="Porto de Embarque"
-              name="porto_embarque"
-              value={data.porto_embarque}
-              onChange={handleChange}
-              placeholder="Digite o porto de embarque"
-            />
+              <TextField
+                label="Porto de Embarque"
+                name="porto_embarque"
+                value={data.porto_embarque}
+                onChange={handleChange}
+                placeholder="Digite o porto de embarque"
+              />
 
-            <TextField
-              label="Data de Embarque"
-              name="data_embarque"
-              value={data.data_embarque}
-              onChange={handleChange}
-              placeholder="Digite a data de embarque (dd/mm/yyyy)"
-            />
+              <TextField
+                label="Data de Embarque"
+                name="data_embarque"
+                value={data.data_embarque}
+                onChange={handleChange}
+                placeholder="Digite a data de embarque (dd/mm/yyyy)"
+              />
 
-            <Button label="Filtrar" onClick={handleSubmit} />
-          </S.SearchContainer>
+              <Button label="Filtrar" onClick={handleSubmit} />
+            </S.SearchContainer>
 
-          <S.CardsContainer>
-            {cruises.map((cruise) => (
-              <CruiseCard
-                key={cruise.id}
-                cruise={cruise}
-                onClick={() => {
-                  setSelectedCruise(cruise);
-                  setOpenModal(true);
+            <S.CardsContainer>
+              {cruises.map((cruise) => (
+                <CruiseCard
+                  key={cruise.id}
+                  cruise={cruise}
+                  onClick={() => {
+                    setSelectedCruise(cruise);
+                    setOpenModal(true);
+                  }}
+                />
+              ))}
+            </S.CardsContainer>
+          </S.Section>
+
+          <S.Section
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: "16px",
+              padding: "24px",
+            }}
+          >
+            <h1>Cancele sua reserva!</h1>
+            <div style={{ display: "flex", alignItems: "end", gap: "8px" }}>
+              <TextField
+                name="reserva_id"
+                label="ID da Reserva"
+                value={reservaId}
+                onChange={(e) => {
+                  setReservaId(e.target.value);
                 }}
               />
-            ))}
-          </S.CardsContainer>
+              <Button
+                label="Cancelar reserva"
+                onClick={() => {
+                  cancelReserva(reservaId);
+                }}
+              />
+            </div>
+          </S.Section>
         </S.HomeContainer>
       </S.PageContainer>
 

@@ -64,3 +64,15 @@ export const SearchContainer = styled.div`
   border-radius: 16px;
   width: 100%;
 `;
+
+export const Section = styled.section`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+
+  h1 {
+    margin-bottom: 12px;
+  }
+`;
