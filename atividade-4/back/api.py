@@ -1,9 +1,6 @@
 from flask import Flask
 from flask import request, jsonify
-from ms.reserva import {
-    cancelar_reserva(),
-    interesses_promocoes
-}
+from ms.reserva import cancelar_reserva, interesses_promocoes
 
 app = Flask(__name__)
 
