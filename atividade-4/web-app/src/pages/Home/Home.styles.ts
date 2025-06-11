@@ -53,3 +53,14 @@ export const PriceSpan = styled.span`
   text-align: right;
   margin-bottom: 8px;
 `;
+
+export const SearchContainer = styled.div`
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: center;
+  background-color: #fff;
+  padding: 18px;
+  border-radius: 16px;
+  width: 100%;
+`;
