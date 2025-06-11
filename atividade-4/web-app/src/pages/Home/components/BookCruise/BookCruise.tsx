@@ -3,12 +3,14 @@ import TextField from "../../../../components/TextField";
 import * as S from "./BookCruise.styles";
 import Button from "../../../../components/Button";
 import type { Cruise } from "../../../../constants/types/Cruise";
+import axios from "axios";
 
 type BookCruiseProps = {
   cruise: Cruise;
+  onSubmit?: () => void;
 };
 
-const BookCruise = ({ cruise }: BookCruiseProps) => {
+const BookCruise = ({ cruise, onSubmit }: BookCruiseProps) => {
   const [formData, setFormData] = useState({
     fullName: "",
     cabins: "",
@@ -23,13 +25,24 @@ const BookCruise = ({ cruise }: BookCruiseProps) => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const data = new FormData();
-    data.append("fullName", formData.fullName);
-    data.append("cabins", formData.cabins);
-    data.append("passengers", formData.passengers);
-    // handle form submission (e.g., send data to API)
+  const handleSubmit = () => {
+    axios
+      .post("http://localhost:5002/reservar", {
+        user_id: formData.fullName,
+        cruzeiro_id: cruise.id,
+        numero_cabines: Number(formData.cabins),
+        numero_pessoas: Number(formData.passengers),
+      })
+      .then((response) => {
+        // handle success (e.g., show confirmation)
+        console.log("Reserva realizada com sucesso", response.data);
+        onSubmit?.();
+      })
+      .catch((error) => {
+        // handle error (e.g., show error message)
+        console.error("Erro ao reservar", error);
+        onSubmit?.();
+      });
   };
 
   return (
@@ -72,7 +85,7 @@ const BookCruise = ({ cruise }: BookCruiseProps) => {
         onChange={handleChange}
       />
 
-      <Button onClick={() => {}} label="Reservar" />
+      <Button onClick={handleSubmit} label="Reservar" />
     </S.Container>
   );
 };

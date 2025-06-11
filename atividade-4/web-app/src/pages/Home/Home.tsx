@@ -19,27 +19,6 @@ type CruiseCardProps = {
   onClick: () => void;
 };
 
-const fakeCruiseCards: CruiseCardProps[] = [
-  {
-    title: "Caribbean Adventure",
-    description: "Explore the beautiful Caribbean islands on a 7-day cruise.",
-    price: "$999",
-    onClick: () => alert("Booked Caribbean Adventure!"),
-  },
-  {
-    title: "Mediterranean Escape",
-    description: "Sail through the Mediterranean and visit historic cities.",
-    price: "$1299",
-    onClick: () => alert("Booked Mediterranean Escape!"),
-  },
-  {
-    title: "Alaskan Expedition",
-    description: "Experience the wild beauty of Alaska on this unique cruise.",
-    price: "$1499",
-    onClick: () => alert("Booked Alaskan Expedition!"),
-  },
-];
-
 const Home = () => {
   const [openModal, setOpenModal] = useState(false);
   const [cruises, setCruises] = useState<Cruise[]>([]);
@@ -146,7 +125,12 @@ const Home = () => {
             setOpenModal(false);
           }}
         >
-          <BookCruise cruise={selectedCruise} />
+          <BookCruise
+            cruise={selectedCruise}
+            onSubmit={() => {
+              setOpenModal(false);
+            }}
+          />
         </Modal>
       )}
     </>
