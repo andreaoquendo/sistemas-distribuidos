@@ -1,10 +1,9 @@
 from flask import Flask
 from flask import request, jsonify
 from ms.reserva import {
-    cancelar_reserva()
+    cancelar_reserva(),
+    interesses_promocoes
 }
-
-interesses_promocoes = set()
 
 app = Flask(__name__)
 
@@ -26,7 +25,7 @@ def cancelar_reserva(reserva_id):
 @app.route("/promocoes", methods=["POST"])
 def registrar_interesse():
     dados = request.get_json()
-    user_id = dados.get('user_id')
+    user_id = dados.get('user_id') 
     if not usuario_id:
         return jsonify({'erro': 'user_id é obrigatório'}), 400
     interesses_promocoes.add(user_id)
