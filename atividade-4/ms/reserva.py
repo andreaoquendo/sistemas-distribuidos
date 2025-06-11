@@ -1,4 +1,4 @@
-import base64
+import base64 
 import pika
 import uuid
 import pandas as pd
@@ -8,6 +8,7 @@ from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA256
 
 interesses_promocoes = set()
+notificacoes_sse = {}
 
 #TODO Verificar Itinerario REST com MS_Itinerários
 #TODO Cancelar reserva
@@ -206,6 +207,28 @@ def cancelar_reserva(reserva_id):
     mensagem = f"reserva={reserva_id}"
     channel.basic_publish(exchange='cruzeiros', routing_key='reserva-cancelada', body=mensagem)
     connection.close()
+
+def escutar_promocoes():
+    def promocoes_callback(ch, method, properties, body):
+        mensagem = body.decode()
+        print(f"[PROMOÇÃO RECEBIDA] {mensagem}")
+        for cliente_id in interesses_promocoes:
+            print(f" -> Enviando promoção para cliente {cliente_id}")
+            if cliente_id in notificacoes_sse:
+                notificacoes_sse[cliente_id].put(mensagem)
+
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+    channel = connection.channel()
+    channel.exchange_declare(exchange='cruzeiros', exchange_type='direct')
+
+    result = channel.queue_declare('', exclusive=True)
+    queue_name = result.method.queue
+    channel.queue_bind(exchange='cruzeiros', queue=queue_name, routing_key='promocoes')
+
+    print('[*] Escutando promoções...')
+    channel.basic_consume(queue=queue_name, on_message_callback=promocoes_callback, auto_ack=True)
+    channel.start_consuming()
+
 
 def console_consultar():
     print("Faça uma reserva de cruzeiro!")
