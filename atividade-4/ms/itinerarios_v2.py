@@ -21,11 +21,11 @@ def consultar_cruzeiro(destino, data_embarque, porto_embarque):
     cruzeiros_filtrados = df
 
     if destino is not None:
-        cruzeiros_filtrados = cruzeiros_filtrados[cruzeiros_filtrados['Destino'] == destino]
+        cruzeiros_filtrados = cruzeiros_filtrados[cruzeiros_filtrados['destino'] == destino]
     if data_embarque is not None:
-        cruzeiros_filtrados = cruzeiros_filtrados[cruzeiros_filtrados['Data de Embarque'] == data_embarque]
+        cruzeiros_filtrados = cruzeiros_filtrados[cruzeiros_filtrados['data_embarque'] == data_embarque]
     if porto_embarque is not None:
-        cruzeiros_filtrados = cruzeiros_filtrados[cruzeiros_filtrados['Porto Embarque'] == porto_embarque]
+        cruzeiros_filtrados = cruzeiros_filtrados[cruzeiros_filtrados['porto_embarque'] == porto_embarque]
 
     if cruzeiros_filtrados.empty:
         print("[MS Itinerarios] Nenhum cruzeiro encontrado com os critérios fornecidos.")

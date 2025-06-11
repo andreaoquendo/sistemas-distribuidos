@@ -26,13 +26,20 @@ const Container = styled.div`
 `;
 
 interface TextFieldProps {
+  name: string;
   label?: string;
   value: string;
   placeholder?: string;
   onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-const TextField = ({ label, value, placeholder, onChange }: TextFieldProps) => {
+const TextField = ({
+  label,
+  name,
+  value,
+  placeholder,
+  onChange,
+}: TextFieldProps) => {
   return (
     <>
       <GlobalStyle />
@@ -42,6 +49,7 @@ const TextField = ({ label, value, placeholder, onChange }: TextFieldProps) => {
           value={value}
           onChange={onChange}
           type="text"
+          name={name}
           placeholder={placeholder}
         />
       </Container>

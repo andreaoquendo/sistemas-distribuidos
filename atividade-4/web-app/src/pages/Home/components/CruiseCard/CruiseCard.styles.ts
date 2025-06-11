@@ -42,7 +42,7 @@ export const PriceSpan = styled.span`
   font-weight: 600;
   color: #007bff;
   text-align: right;
-  margin-bottom: 8px;
+  margin-bottom: 16px;
 `;
 
 export const DatesBox = styled.div`
@@ -51,4 +51,5 @@ export const DatesBox = styled.div`
   align-items: center;
   color: #3f3f3f;
   font-size: 14px;
+  margin-bottom: 24px;
 `;

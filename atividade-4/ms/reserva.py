@@ -1,4 +1,6 @@
-import base64 
+import base64
+import threading
+from flask_cors import CORS
 import pika
 import uuid
 import pandas as pd
@@ -6,11 +8,32 @@ import os
 from Crypto.PublicKey import RSA
 from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA256
+import requests
+from flask import Flask
+from flask import request, jsonify
 
 interesses_promocoes = set()
 notificacoes_sse = {}
 
 #TODO Verificar Itinerario REST com MS_Itinerários
+def consultar_itinerarios_rest(destino=None, data_embarque=None, porto_embarque=None):
+    url = "http://localhost:5001/consultar-itinerarios"
+    params = {}
+    if destino:
+        params['destino'] = destino
+    if data_embarque:
+        params['data_embarque'] = data_embarque.strftime('%d/%m/%Y') if hasattr(data_embarque, 'strftime') else data_embarque
+    if porto_embarque:
+        params['porto_embarque'] = porto_embarque
+
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        return response.json()['cruzeiros']
+    except Exception as e:
+        print(f"Erro ao consultar itinerários via REST: {e}")
+        return None
+
 #TODO Cancelar reserva
 #TODO Reserva escuta promoções
 #TODO Requisitar link de pagamento por REST ao MS_Pagamento
@@ -277,12 +300,39 @@ def console_reservar():
     quantidade_cabines = int(input("Digite a quantidade de cabines: "))
     realizar_reserva(destino, data_embarque, quantidade_passageiros, quantidade_cabines)
 
+
+app = Flask(__name__)
+CORS(app)
+
+@app.route("/itinerarios", methods=["GET"])
+def consultar_itinerarios():
+    destino = request.args.get('destino') or None
+    data_embarque = request.args.get('data_embarque') or None
+    porto_embarque = request.args.get('porto_embarque') or None
+
+    ids = consultar_itinerarios_rest(destino, data_embarque, porto_embarque)
+    if not ids:
+        return jsonify({"itinerarios": []})
+
+    # Carrega os dados do arquivo cruise_data.xlsx
+    try:
+        df = pd.read_excel('cruise_data.xlsx')
+    except Exception as e:
+        return jsonify({"erro": "Erro ao carregar dados do cruzeiro.", "detalhe": str(e)}), 500
+
+    # Filtra os itinerários pelos ids retornados
+    itinerarios = df[df['id'].astype(str).isin([str(i) for i in ids])].to_dict(orient='records')
+
+    return jsonify({"itinerarios": itinerarios})
+
 if __name__ == "__main__":
-    print("Deseja consultar ou fazer uma reserva? (1 - Consultar, 2 - Reservar): ")
-    opcao = input("Digite sua opção: ")
-    if opcao == '1':
-        console_consultar()
-    elif opcao == '2':
-        console_reservar()
-    else:
-        print("Opção inválida.")
+    
+    app.run(debug=True, port=5002)
+    # print("Deseja consultar ou fazer uma reserva? (1 - Consultar, 2 - Reservar): ")
+    # opcao = input("Digite sua opção: ")
+    # if opcao == '1':
+    #     console_consultar()
+    # elif opcao == '2':
+    #     console_reservar()
+    # else:
+    #     print("Opção inválida.")
