@@ -79,34 +79,32 @@ def consultar_opcoes(destino, data_embarque, porto_embarque):
 # Funcionalidade (3b)
 # Função para realizar a reserva de um cruzeiro, salvando os dados em um arquivo CSV
 # e publicando uma mensagem na fila de reservas
-def realizar_reserva(destino, data_embarque, quantidade_passageiros, quantidade_cabines):
+def realizar_reserva(cruzeiro_id, user_id, quantidade_passageiros, quantidade_cabines):
     file_path = 'reservas.csv'
 
     # Procura na planilha cruise_data o valor do cruzeiro
-    def calcular_valor(data_embarque, destino, quantidade_cabines):
+    def calcular_valor(cruzeiro_id, quantidade_passageiros):
         base_dir = os.path.abspath(os.path.dirname(__file__))
-        file_path = os.path.join(base_dir, '..', 'path/to/cruise_data.xlsx')
-        file_path = os.path.abspath(file_path)
-
+        file_path = os.path.join(base_dir, 'cruise_data.xlsx')
         df = pd.read_excel(file_path)
-        df['data_embarque'] = pd.to_datetime(df['data_embarque'], format='%d/%m/%Y')
-        data_embarque = pd.to_datetime(data_embarque, format='%d/%m/%Y')
-        filtered_data = df[(df['destino'] == destino) & (df['data_embarque'] == data_embarque)]
+        filtered_data = df[df['id'] == cruzeiro_id]
 
         if not filtered_data.empty:
-            valor_cabine = filtered_data.iloc[0]['valor_cabine']
-            return valor_cabine * quantidade_cabines
+            valor_pessoa = filtered_data.iloc[0]['valor_pessoa']
+            return valor_pessoa * quantidade_passageiros
         else:
-            raise ValueError("Destino ou data de embarque não encontrados na planilha.")
+            raise ValueError("Cruzeiro não encontrado na planilha.")
 
     # Salva a reserva no arquivo CSV
+    reserva_id = str(uuid.uuid4())  
     reserva_data = {
-        'id': [str(uuid.uuid4())],
-        'destino': [destino],
-        'data_embarque': [data_embarque],
+        'id': [reserva_id],
+        'user_id': [user_id],
+        'cruzeiro_id': [cruzeiro_id],
         'quantidade_passageiros': [quantidade_passageiros],
         'quantidade_cabines': [quantidade_cabines],
-        'valor_total': [calcular_valor(data_embarque, destino, quantidade_passageiros)]
+        'valor_total': [calcular_valor(cruzeiro_id, quantidade_passageiros)],
+        'status': ['pendente']
     }
 
     df = pd.DataFrame(reserva_data)
@@ -121,7 +119,6 @@ def realizar_reserva(destino, data_embarque, quantidade_passageiros, quantidade_
     channel = connection.channel()
 
     channel.exchange_declare(exchange='cruzeiros', exchange_type='direct')
-    reserva_id = str(uuid.uuid4())  
 
     message = f"id={reserva_id}"
 
@@ -134,7 +131,7 @@ def realizar_reserva(destino, data_embarque, quantidade_passageiros, quantidade_
     connection.close()
 
     # Começa a mostrar no console o andamento da reserva
-    andamento_reserva()  
+    # andamento_reserva()  
 
 # Funcionalidade (3c)
 # Acompanhar o status da reserva
@@ -302,8 +299,28 @@ def consultar_itinerarios():
 
     return jsonify({"itinerarios": itinerarios})
 
-if __name__ == "__main__":
+@app.route("/reservar", methods=["POST"])
+def reservar_itinerario():
+    data = request.get_json()
+    user_id = data.get("user_id")
+    cruzeiro_id = data.get("cruzeiro_id")
+    num_cabines = data.get("numero_cabines")
+    num_pessoas = data.get("numero_pessoas")
     
+    if not all([user_id, num_cabines, num_pessoas]):
+        return jsonify({"error": "Parâmetros obrigatórios ausentes"}), 400
+    realizar_reserva(cruzeiro_id, user_id, num_pessoas, num_cabines)
+    return jsonify({
+        "mensagem": f"Itinerário {cruzeiro_id} reservado com sucesso!",
+        "user_id": user_id,
+        "numero_cabines": num_cabines,
+        "numero_pessoas": num_pessoas
+    }), 200
+
+
+if __name__ == "__main__":
+
+    # realizar_reserva(cruzeiro_id=1, user_id=123, quantidade_passageiros=2, quantidade_cabines=1)
     app.run(debug=True, port=5002)
     # print("Deseja consultar ou fazer uma reserva? (1 - Consultar, 2 - Reservar): ")
     # opcao = input("Digite sua opção: ")
