@@ -1,5 +1,7 @@
 import base64
+import queue
 import threading
+import time
 from flask_cors import CORS
 import pika
 import uuid
@@ -9,11 +11,13 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA256
 import requests
-from flask import Flask
+from flask import Flask, Response
 from flask import request, jsonify
 
 interesses_promocoes = set()
 notificacoes_sse = {}
+conexoes_status_reserva = {}
+
 
 #TODO Verificar Itinerario REST com MS_Itinerários
 def consultar_itinerarios_rest(destino=None, data_embarque=None, porto_embarque=None):
@@ -77,9 +81,7 @@ def consultar_opcoes(destino, data_embarque, porto_embarque):
     print(filtro.to_string(index=False))
     print("-"*100)
 
-# Funcionalidade (3b)
-# Função para realizar a reserva de um cruzeiro, salvando os dados em um arquivo CSV
-# e publicando uma mensagem na fila de reservas
+
 def realizar_reserva(cruzeiro_id, user_id, quantidade_passageiros, quantidade_cabines):
     file_path = 'reservas.csv'
 
@@ -98,13 +100,14 @@ def realizar_reserva(cruzeiro_id, user_id, quantidade_passageiros, quantidade_ca
 
     # Salva a reserva no arquivo CSV
     reserva_id = str(uuid.uuid4())  
+    valor_total = calcular_valor(cruzeiro_id, quantidade_passageiros)
     reserva_data = {
         'id': [reserva_id],
         'user_id': [user_id],
         'cruzeiro_id': [cruzeiro_id],
         'quantidade_passageiros': [quantidade_passageiros],
         'quantidade_cabines': [quantidade_cabines],
-        'valor_total': [calcular_valor(cruzeiro_id, quantidade_passageiros)],
+        'valor_total': [valor_total],
         'status': ['pendente']
     }
 
@@ -130,6 +133,8 @@ def realizar_reserva(cruzeiro_id, user_id, quantidade_passageiros, quantidade_ca
     )
 
     connection.close()
+
+    return valor_total, reserva_id
 
     # Começa a mostrar no console o andamento da reserva
     # andamento_reserva()  
@@ -230,6 +235,7 @@ def cancelar_reserva(reserva_id):
     connection.close()
 
 def escutar_promocoes():
+
     def promocoes_callback(ch, method, properties, body):
         mensagem = body.decode()
         print(f"[PROMOÇÃO RECEBIDA] {mensagem}")
@@ -240,11 +246,11 @@ def escutar_promocoes():
 
     connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
     channel = connection.channel()
-    channel.exchange_declare(exchange='cruzeiros', exchange_type='direct')
+    channel.exchange_declare(exchange='promocoes', exchange_type='fanout')
 
     result = channel.queue_declare('', exclusive=True)
     queue_name = result.method.queue
-    channel.queue_bind(exchange='cruzeiros', queue=queue_name, routing_key='promocoes')
+    channel.queue_bind(exchange='promocoes', queue=queue_name)
 
     print('[*] Escutando promoções...')
     channel.basic_consume(queue=queue_name, on_message_callback=promocoes_callback, auto_ack=True)
@@ -291,16 +297,47 @@ def console_consultar():
 
     consultar_opcoes(destino, data_embarque, porto_embarque)
 
-def console_reservar():
-    destino = input("Digite o destino: ")
-    data_embarque = input("Digite a data de embarque (dd/mm/aaaa): ")
-    quantidade_passageiros = int(input("Digite a quantidade de passageiros: "))
-    quantidade_cabines = int(input("Digite a quantidade de cabines: "))
-    realizar_reserva(destino, data_embarque, quantidade_passageiros, quantidade_cabines)
 
+def solicitar_pagamento(reserva_id, valor, moeda, user_id):
+    print(f"[MS Reserva] Solicitando pagamento de {valor} {moeda} para o usuário {user_id}")
+    url = "http://localhost:5010/gerar-link-pagamento"
+    payload = {
+        "reserva_id": reserva_id,
+        "valor": float(valor),
+        "moeda": str(moeda),
+        "user_id": str(user_id)
+    }
+    try:
+        print("oii")
+        response = requests.get(url, json=payload)
+        print(response.json())
+    except Exception as e:
+        print(f"Erro ao solicitar pagamento: {e}")
+        return None
+    
+    return response.json().get('link_pagamento', None)
 
 app = Flask(__name__)
 CORS(app)
+
+@app.route('/status-reserva')
+def stream_status_reserva():
+    reserva_id = request.args.get('reserva_id')
+    if not reserva_id:
+        return Response("reserva_id obrigatório\n", status=400)
+
+    fila = queue.Queue()
+    conexoes_status_reserva[reserva_id] = fila
+
+    def eventos():
+        try:
+            while True:
+                mensagem = fila.get()
+                yield f"data: {mensagem}\n\n"
+        except GeneratorExit:
+            del conexoes_status_reserva[reserva_id]
+
+    return Response(eventos(), content_type='text/event-stream')
 
 @app.route("/itinerarios", methods=["GET"])
 def consultar_itinerarios():
@@ -333,13 +370,17 @@ def reservar_itinerario():
     
     if not all([user_id, num_cabines, num_pessoas]):
         return jsonify({"error": "Parâmetros obrigatórios ausentes"}), 400
-    realizar_reserva(cruzeiro_id, user_id, num_pessoas, num_cabines)
+    valor, reserva_id = realizar_reserva(cruzeiro_id, user_id, num_pessoas, num_cabines)
+    link_pagamento= solicitar_pagamento(
+        reserva_id=reserva_id,
+        valor=valor,  # Exemplo de valor, deve ser calculado corretamente
+        moeda="USD",
+        user_id=user_id
+    )
+
     return jsonify({
-        "mensagem": f"Itinerário {cruzeiro_id} reservado com sucesso!",
-        "cruzeiro_id": cruzeiro_id,
-        "user_id": user_id,
-        "numero_cabines": num_cabines,
-        "numero_pessoas": num_pessoas
+        "reserva_id": reserva_id,
+        "link_pagamento": link_pagamento
     }), 200
 
 @app.route("/cancelar-reserva/<reserva_id>", methods=["DELETE"])
@@ -349,9 +390,107 @@ def cancelar_reserva_rest(reserva_id):
         "mensagem": f"Reserva {reserva_id} cancelada com sucesso!"
     }), 200
 
+@app.route("/promocoes", methods=["POST"])
+def registrar_interesse():
+    dados = request.get_json()
+    user_id = dados.get('user_id') 
+    if not user_id:
+        return jsonify({'erro': 'user_id é obrigatório'}), 400
+    interesses_promocoes.add(user_id)
+    return jsonify({
+        "mensagem": f"Cadastro de interesse em promoções para {user_id} concluído com sucesso!"
+    }), 200
+
+@app.route("/cancelar-promocao/<user_id>", methods=["DELETE"])
+def cancelar_interesse(user_id):
+    if user_id in interesses_promocoes:
+        interesses_promocoes.discard(user_id)
+        # sse_subscribers.pop(user_id, None)
+        return jsonify({"mensagem": f"Interesse em promoções para {user_id} cancelado com sucesso!"}), 200
+    else:
+        return jsonify({'erro': 'Cadastro de interesse não encontrado'}), 404
+    
+@app.route('/promocoes', methods=['GET'])
+def stream():
+    user_id = request.args.get('user_id')
+    
+    if user_id not in interesses_promocoes:
+        return Response("Acesso não autorizado\n", status=403)
+
+
+    def gerar_eventos():
+        fila = queue.Queue()
+        notificacoes_sse[user_id] = fila
+        try:
+            while True:
+                # Se o interesse for removido, encerra o stream
+                if user_id not in interesses_promocoes:
+                    yield "event: close\ndata: Interesse cancelado\n\n"
+                    break
+                try:
+                    mensagem = fila.get(timeout=30)
+                    yield f"data: {mensagem}\n\n"
+                except queue.Empty:
+                    # Mantém a conexão viva com um comentário SSE
+                    yield ": keep-alive\n\n"
+        finally:
+            notificacoes_sse.pop(user_id, None)
+
+    return Response(gerar_eventos(), content_type='text/event-stream')
+
+def pika_publish(message, exchange, routing_key):
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+    channel = connection.channel()
+
+    channel.exchange_declare(exchange=exchange, exchange_type='direct')
+
+    channel.basic_publish(
+        exchange=exchange, 
+        routing_key=routing_key, 
+        body=message, 
+    )
+
+    connection.close()
+
+def escutar_filas():
+
+    def notificar_status_reserva(reserva_id, mensagem):
+        fila = conexoes_status_reserva.get(reserva_id)
+        if fila:
+            fila.put(mensagem)
+            
+    def callback(ch, method, properties, body):
+        reserva_id = body.decode()
+        if method.routing_key == 'pagamento-recusado':
+            print(f"[❌] Pagamento recusado para reserva {reserva_id}")
+            message = "id=" + reserva_id
+            pika_publish(message=message, exchange='cruzeiros', routing_key='reserva-cancelada')
+            notificar_status_reserva(reserva_id, "❌ Pagamento recusado.")
+        elif method.routing_key == 'bilhete-gerado':
+            print(f"Bilhete gerado{reserva_id}")
+            notificar_status_reserva(reserva_id, "🎫 Bilhete gerado com sucesso.")
+        elif method.routing_key == 'pagamento-aprovado':
+            print(f"[] Pagamento aprovado {reserva_id}")
+            notificar_status_reserva(reserva_id, "✅ Pagamento aprovado.")
+
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+    channel = connection.channel()
+    channel.exchange_declare(exchange='cruzeiros', exchange_type='direct')
+
+    result = channel.queue_declare('', exclusive=True)
+    queue_name = result.method.queue
+
+    channel.queue_bind(exchange='cruzeiros', queue=queue_name, routing_key='pagamento-aprovado')
+    channel.queue_bind(exchange='cruzeiros', queue=queue_name, routing_key='pagamento-recusado')
+    channel.queue_bind(exchange='cruzeiros', queue=queue_name, routing_key='bilhete-gerado')
+
+    channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
+    channel.start_consuming()
+
 if __name__ == "__main__":
 
-    # realizar_reserva(cruzeiro_id=1, user_id=123, quantidade_passageiros=2, quantidade_cabines=1)
+    threading.Thread(target=escutar_filas, daemon=True).start()
+    threading.Thread(target=escutar_promocoes, daemon=True).start()
     app.run(debug=True, port=5002)
     # print("Deseja consultar ou fazer uma reserva? (1 - Consultar, 2 - Reservar): ")
     # opcao = input("Digite sua opção: ")

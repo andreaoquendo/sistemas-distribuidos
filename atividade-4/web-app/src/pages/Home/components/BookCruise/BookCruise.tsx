@@ -7,7 +7,7 @@ import axios from "axios";
 
 type BookCruiseProps = {
   cruise: Cruise;
-  onSubmit?: () => void;
+  onSubmit?: (reservaId?: string) => void;
 };
 
 const BookCruise = ({ cruise, onSubmit }: BookCruiseProps) => {
@@ -35,8 +35,8 @@ const BookCruise = ({ cruise, onSubmit }: BookCruiseProps) => {
       })
       .then((response) => {
         // handle success (e.g., show confirmation)
-        console.log("Reserva realizada com sucesso", response.data);
-        onSubmit?.();
+        alert(`Link de pagamento: ${response.data.link_pagamento}`);
+        onSubmit?.(response.data.reserva_id);
       })
       .catch((error) => {
         // handle error (e.g., show error message)

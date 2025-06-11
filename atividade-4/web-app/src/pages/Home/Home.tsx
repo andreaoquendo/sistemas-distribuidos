@@ -23,14 +23,98 @@ const Home = () => {
   const [openModal, setOpenModal] = useState(false);
   const [cruises, setCruises] = useState<Cruise[]>([]);
   const [selectedCruise, setSelectedCruise] = useState<Cruise | null>(null);
+  const [mensagens, setMensagens] = useState<string[]>([]);
+  const [notification, setNotification] = useState<boolean>(false);
 
   const [reservaId, setReservaId] = useState<string>("");
+
+  const [userId, setUserId] = useState<string>("");
+  const [reservaStreams, setReservaStreams] = useState<
+    Record<string, EventSource>
+  >({});
 
   const [data, setData] = useState({
     destino: "",
     data_embarque: "",
     porto_embarque: "",
   });
+
+  const handleNotification = () => {
+    if (!userId) return;
+    if (notification == true) return;
+    console.log("Ativando notificações para o usuário:", userId);
+
+    const eventSource = new EventSource(
+      `http://localhost:5002/promocoes?user_id=${userId}`
+    );
+    setNotification(true);
+
+    eventSource.onmessage = (event) => {
+      setMensagens((prev) => [...prev, event.data]);
+      alert(event.data);
+    };
+
+    eventSource.onerror = (err) => {
+      console.error("Erro na conexão SSE:", err);
+      alert("Usuário não encontrado ou conexão falhou.");
+      setNotification(false);
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.close();
+      setNotification(false);
+    };
+  };
+
+  const handleReservaUpdates = (reservaId: string) => {
+    if (!reservaId) return;
+    if (reservaStreams[reservaId]) return; // já está escutando essa reserva
+
+    console.log("Conectando ao stream de status da reserva:", reservaId);
+
+    const eventSource = new EventSource(
+      `http://localhost:5002/status-reserva?reserva_id=${reservaId}`
+    );
+
+    // Atualiza estado com nova conexão ativa
+    setReservaStreams((prev) => ({ ...prev, [reservaId]: eventSource }));
+
+    eventSource.onmessage = (event) => {
+      console.log(`Atualização para reserva ${reservaId}:`, event.data);
+      setMensagens((prev) => [
+        ...prev,
+        `📦 [Reserva ${reservaId}] ${event.data}`,
+      ]);
+      alert(`📦 [Reserva ${reservaId}] ${event.data}`);
+    };
+
+    eventSource.onerror = (err) => {
+      console.error(`Erro na conexão SSE da reserva ${reservaId}:`, err);
+      alert(`Erro com a reserva ${reservaId}. Conexão encerrada.`);
+      eventSource.close();
+
+      // Remove do estado
+      setReservaStreams((prev) => {
+        const atualizado = { ...prev };
+        delete atualizado[reservaId];
+        return atualizado;
+      });
+    };
+  };
+
+  const cancelarPromocao = async (userId: string) => {
+    try {
+      const response = await axios.delete(
+        `http://localhost:5002/cancelar-promocao/${userId}`
+      );
+      console.log("Promoção cancelada:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao cancelar promoção:", error);
+      // throw error;
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -71,6 +155,19 @@ const Home = () => {
       return response.data;
     } catch (error) {
       console.error("Erro ao cancelar reserva:", error);
+      throw error;
+    }
+  };
+
+  const activatePromocao = async (userId: string) => {
+    try {
+      const response = await axios.post("http://localhost:5002/promocoes", {
+        user_id: userId,
+      });
+      console.log("Promoção ativada:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao ativar promoção:", error);
       throw error;
     }
   };
@@ -157,6 +254,28 @@ const Home = () => {
               />
             </div>
           </S.Section>
+          <S.Section style={{ marginTop: "24px" }}>
+            <h1>Gerencie suas promoções!</h1>
+
+            <div style={{ display: "flex", gap: "12px" }}>
+              <TextField
+                label="Código de usuário"
+                name="user_id"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                placeholder="Silvana"
+              />
+              <Button label="Ativar" onClick={() => handleNotification()} />
+              <Button
+                label="Inscrever"
+                onClick={() => activatePromocao(userId)}
+              />
+              <Button
+                label="Cancelar"
+                onClick={() => cancelarPromocao(userId)}
+              />
+            </div>
+          </S.Section>
         </S.HomeContainer>
       </S.PageContainer>
 
@@ -169,8 +288,12 @@ const Home = () => {
         >
           <BookCruise
             cruise={selectedCruise}
-            onSubmit={() => {
+            onSubmit={(reservaId?: string) => {
               setOpenModal(false);
+              if (reservaId) {
+                setReservaId(reservaId);
+                handleReservaUpdates(reservaId);
+              }
             }}
           />
         </Modal>
