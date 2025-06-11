@@ -8,7 +8,7 @@ def publish_sale(message):
         pika.ConnectionParameters(host='localhost'))
     channel = connection.channel()
 
-    channel.exchange_declare(exchange='promocoes', exchange_type='fanout')
+    channel.exchange_declare(exchange='promocoes', exchange_type='direct')
     channel.basic_publish(exchange='promocoes', routing_key='', body=message)
     connection.close()
 
