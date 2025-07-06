@@ -1,9 +1,27 @@
 syntax = "proto3";
 
-service MessageService {
-  rpc sendMessage(Message) returns (Message);
+service ClientService {
+  rpc EnviarDados (EnviarDadosParams) returns (EnviarDadosResult);
+  rpc ConsultarDados (ConsultarDadosParams) returns (ConsultarDadosResult);
 }
 
-message Message {
-  string content = 1;
+message EnviarDadosParams {
+  string data = 1;
+}
+
+message EnviarDadosResult {
+  bool success = 1;
+  string message = 2;
+}
+
+message ConsultarDadosParams {}
+
+message ConsultarDadosResult {
+  repeated Log entries = 1;
+}
+
+message Log {
+  int32 epoch = 1;
+  int32 offset = 2;
+  string data = 3;
 }

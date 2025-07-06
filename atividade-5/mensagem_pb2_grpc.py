@@ -25,7 +25,7 @@ if _version_not_supported:
     )
 
 
-class MessageServiceStub(object):
+class ClientServiceStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -34,43 +34,59 @@ class MessageServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.sendMessage = channel.unary_unary(
-                '/MessageService/sendMessage',
-                request_serializer=mensagem__pb2.Message.SerializeToString,
-                response_deserializer=mensagem__pb2.Message.FromString,
+        self.EnviarDados = channel.unary_unary(
+                '/ClientService/EnviarDados',
+                request_serializer=mensagem__pb2.EnviarDadosParams.SerializeToString,
+                response_deserializer=mensagem__pb2.EnviarDadosResult.FromString,
+                _registered_method=True)
+        self.ConsultarDados = channel.unary_unary(
+                '/ClientService/ConsultarDados',
+                request_serializer=mensagem__pb2.ConsultarDadosParams.SerializeToString,
+                response_deserializer=mensagem__pb2.ConsultarDadosResult.FromString,
                 _registered_method=True)
 
 
-class MessageServiceServicer(object):
+class ClientServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def sendMessage(self, request, context):
+    def EnviarDados(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ConsultarDados(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
 
-def add_MessageServiceServicer_to_server(servicer, server):
+def add_ClientServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'sendMessage': grpc.unary_unary_rpc_method_handler(
-                    servicer.sendMessage,
-                    request_deserializer=mensagem__pb2.Message.FromString,
-                    response_serializer=mensagem__pb2.Message.SerializeToString,
+            'EnviarDados': grpc.unary_unary_rpc_method_handler(
+                    servicer.EnviarDados,
+                    request_deserializer=mensagem__pb2.EnviarDadosParams.FromString,
+                    response_serializer=mensagem__pb2.EnviarDadosResult.SerializeToString,
+            ),
+            'ConsultarDados': grpc.unary_unary_rpc_method_handler(
+                    servicer.ConsultarDados,
+                    request_deserializer=mensagem__pb2.ConsultarDadosParams.FromString,
+                    response_serializer=mensagem__pb2.ConsultarDadosResult.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'MessageService', rpc_method_handlers)
+            'ClientService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('MessageService', rpc_method_handlers)
+    server.add_registered_method_handlers('ClientService', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
-class MessageService(object):
+class ClientService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def sendMessage(request,
+    def EnviarDados(request,
             target,
             options=(),
             channel_credentials=None,
@@ -83,9 +99,36 @@ class MessageService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/MessageService/sendMessage',
-            mensagem__pb2.Message.SerializeToString,
-            mensagem__pb2.Message.FromString,
+            '/ClientService/EnviarDados',
+            mensagem__pb2.EnviarDadosParams.SerializeToString,
+            mensagem__pb2.EnviarDadosResult.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ConsultarDados(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/ClientService/ConsultarDados',
+            mensagem__pb2.ConsultarDadosParams.SerializeToString,
+            mensagem__pb2.ConsultarDadosResult.FromString,
             options,
             channel_credentials,
             insecure,
