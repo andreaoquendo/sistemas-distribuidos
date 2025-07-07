@@ -6,6 +6,12 @@ from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
+class Ack(_message.Message):
+    __slots__ = ("recebido",)
+    RECEBIDO_FIELD_NUMBER: _ClassVar[int]
+    recebido: bool
+    def __init__(self, recebido: bool = ...) -> None: ...
+
 class EnviarDadosParams(_message.Message):
     __slots__ = ("data",)
     DATA_FIELD_NUMBER: _ClassVar[int]

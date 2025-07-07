@@ -24,23 +24,27 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0emensagem.proto\"!\n\x11\x45nviarDadosParams\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\t\"5\n\x11\x45nviarDadosResult\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x16\n\x14\x43onsultarDadosParams\"-\n\x14\x43onsultarDadosResult\x12\x15\n\x07\x65ntries\x18\x01 \x03(\x0b\x32\x04.Log\"2\n\x03Log\x12\r\n\x05\x65poch\x18\x01 \x01(\x05\x12\x0e\n\x06offset\x18\x02 \x01(\x05\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\t2\x86\x01\n\rClientService\x12\x35\n\x0b\x45nviarDados\x12\x12.EnviarDadosParams\x1a\x12.EnviarDadosResult\x12>\n\x0e\x43onsultarDados\x12\x15.ConsultarDadosParams\x1a\x15.ConsultarDadosResultb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0emensagem.proto\"\x17\n\x03\x41\x63k\x12\x10\n\x08recebido\x18\x01 \x01(\x08\"!\n\x11\x45nviarDadosParams\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\t\"5\n\x11\x45nviarDadosResult\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x16\n\x14\x43onsultarDadosParams\"-\n\x14\x43onsultarDadosResult\x12\x15\n\x07\x65ntries\x18\x01 \x03(\x0b\x32\x04.Log\"2\n\x03Log\x12\r\n\x05\x65poch\x18\x01 \x01(\x05\x12\x0e\n\x06offset\x18\x02 \x01(\x05\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\t2\x86\x01\n\rClientService\x12\x35\n\x0b\x45nviarDados\x12\x12.EnviarDadosParams\x1a\x12.EnviarDadosResult\x12>\n\x0e\x43onsultarDados\x12\x15.ConsultarDadosParams\x1a\x15.ConsultarDadosResult2-\n\x0eReplicaService\x12\x1b\n\rReplicarDados\x12\x04.Log\x1a\x04.Ackb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'mensagem_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_ENVIARDADOSPARAMS']._serialized_start=18
-  _globals['_ENVIARDADOSPARAMS']._serialized_end=51
-  _globals['_ENVIARDADOSRESULT']._serialized_start=53
-  _globals['_ENVIARDADOSRESULT']._serialized_end=106
-  _globals['_CONSULTARDADOSPARAMS']._serialized_start=108
-  _globals['_CONSULTARDADOSPARAMS']._serialized_end=130
-  _globals['_CONSULTARDADOSRESULT']._serialized_start=132
-  _globals['_CONSULTARDADOSRESULT']._serialized_end=177
-  _globals['_LOG']._serialized_start=179
-  _globals['_LOG']._serialized_end=229
-  _globals['_CLIENTSERVICE']._serialized_start=232
-  _globals['_CLIENTSERVICE']._serialized_end=366
+  _globals['_ACK']._serialized_start=18
+  _globals['_ACK']._serialized_end=41
+  _globals['_ENVIARDADOSPARAMS']._serialized_start=43
+  _globals['_ENVIARDADOSPARAMS']._serialized_end=76
+  _globals['_ENVIARDADOSRESULT']._serialized_start=78
+  _globals['_ENVIARDADOSRESULT']._serialized_end=131
+  _globals['_CONSULTARDADOSPARAMS']._serialized_start=133
+  _globals['_CONSULTARDADOSPARAMS']._serialized_end=155
+  _globals['_CONSULTARDADOSRESULT']._serialized_start=157
+  _globals['_CONSULTARDADOSRESULT']._serialized_end=202
+  _globals['_LOG']._serialized_start=204
+  _globals['_LOG']._serialized_end=254
+  _globals['_CLIENTSERVICE']._serialized_start=257
+  _globals['_CLIENTSERVICE']._serialized_end=391
+  _globals['_REPLICASERVICE']._serialized_start=393
+  _globals['_REPLICASERVICE']._serialized_end=438
 # @@protoc_insertion_point(module_scope)

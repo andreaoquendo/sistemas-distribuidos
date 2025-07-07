@@ -5,6 +5,14 @@ service ClientService {
   rpc ConsultarDados (ConsultarDadosParams) returns (ConsultarDadosResult);
 }
 
+service ReplicaService {
+  rpc ReplicarDados (Log) returns (Ack);
+}
+
+message Ack {
+  bool recebido = 1;
+}
+
 message EnviarDadosParams {
   string data = 1;
 }
