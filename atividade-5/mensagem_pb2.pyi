@@ -6,11 +6,23 @@ from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
+class CommitParams(_message.Message):
+    __slots__ = ("epoch", "offset")
+    EPOCH_FIELD_NUMBER: _ClassVar[int]
+    OFFSET_FIELD_NUMBER: _ClassVar[int]
+    epoch: int
+    offset: int
+    def __init__(self, epoch: _Optional[int] = ..., offset: _Optional[int] = ...) -> None: ...
+
 class Ack(_message.Message):
-    __slots__ = ("recebido",)
+    __slots__ = ("recebido", "ultima_epoca", "ultimo_offset")
     RECEBIDO_FIELD_NUMBER: _ClassVar[int]
+    ULTIMA_EPOCA_FIELD_NUMBER: _ClassVar[int]
+    ULTIMO_OFFSET_FIELD_NUMBER: _ClassVar[int]
     recebido: bool
-    def __init__(self, recebido: bool = ...) -> None: ...
+    ultima_epoca: int
+    ultimo_offset: int
+    def __init__(self, recebido: bool = ..., ultima_epoca: _Optional[int] = ..., ultimo_offset: _Optional[int] = ...) -> None: ...
 
 class EnviarDadosParams(_message.Message):
     __slots__ = ("data",)

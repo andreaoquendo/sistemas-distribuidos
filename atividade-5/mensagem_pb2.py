@@ -24,27 +24,29 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0emensagem.proto\"\x17\n\x03\x41\x63k\x12\x10\n\x08recebido\x18\x01 \x01(\x08\"!\n\x11\x45nviarDadosParams\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\t\"5\n\x11\x45nviarDadosResult\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x16\n\x14\x43onsultarDadosParams\"-\n\x14\x43onsultarDadosResult\x12\x15\n\x07\x65ntries\x18\x01 \x03(\x0b\x32\x04.Log\"2\n\x03Log\x12\r\n\x05\x65poch\x18\x01 \x01(\x05\x12\x0e\n\x06offset\x18\x02 \x01(\x05\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\t2\x86\x01\n\rClientService\x12\x35\n\x0b\x45nviarDados\x12\x12.EnviarDadosParams\x1a\x12.EnviarDadosResult\x12>\n\x0e\x43onsultarDados\x12\x15.ConsultarDadosParams\x1a\x15.ConsultarDadosResult2-\n\x0eReplicaService\x12\x1b\n\rReplicarDados\x12\x04.Log\x1a\x04.Ackb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0emensagem.proto\"-\n\x0c\x43ommitParams\x12\r\n\x05\x65poch\x18\x01 \x01(\x05\x12\x0e\n\x06offset\x18\x02 \x01(\x05\"D\n\x03\x41\x63k\x12\x10\n\x08recebido\x18\x01 \x01(\x08\x12\x14\n\x0cultima_epoca\x18\x02 \x01(\x05\x12\x15\n\rultimo_offset\x18\x03 \x01(\x05\"!\n\x11\x45nviarDadosParams\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\t\"5\n\x11\x45nviarDadosResult\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x16\n\x14\x43onsultarDadosParams\"-\n\x14\x43onsultarDadosResult\x12\x15\n\x07\x65ntries\x18\x01 \x03(\x0b\x32\x04.Log\"2\n\x03Log\x12\r\n\x05\x65poch\x18\x01 \x01(\x05\x12\x0e\n\x06offset\x18\x02 \x01(\x05\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\t2\x86\x01\n\rClientService\x12\x35\n\x0b\x45nviarDados\x12\x12.EnviarDadosParams\x1a\x12.EnviarDadosResult\x12>\n\x0e\x43onsultarDados\x12\x15.ConsultarDadosParams\x1a\x15.ConsultarDadosResult2S\n\x0eReplicaService\x12\x1b\n\rReplicarDados\x12\x04.Log\x1a\x04.Ack\x12$\n\rCommitarDados\x12\r.CommitParams\x1a\x04.Ackb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'mensagem_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_ACK']._serialized_start=18
-  _globals['_ACK']._serialized_end=41
-  _globals['_ENVIARDADOSPARAMS']._serialized_start=43
-  _globals['_ENVIARDADOSPARAMS']._serialized_end=76
-  _globals['_ENVIARDADOSRESULT']._serialized_start=78
-  _globals['_ENVIARDADOSRESULT']._serialized_end=131
-  _globals['_CONSULTARDADOSPARAMS']._serialized_start=133
-  _globals['_CONSULTARDADOSPARAMS']._serialized_end=155
-  _globals['_CONSULTARDADOSRESULT']._serialized_start=157
-  _globals['_CONSULTARDADOSRESULT']._serialized_end=202
-  _globals['_LOG']._serialized_start=204
-  _globals['_LOG']._serialized_end=254
-  _globals['_CLIENTSERVICE']._serialized_start=257
-  _globals['_CLIENTSERVICE']._serialized_end=391
-  _globals['_REPLICASERVICE']._serialized_start=393
-  _globals['_REPLICASERVICE']._serialized_end=438
+  _globals['_COMMITPARAMS']._serialized_start=18
+  _globals['_COMMITPARAMS']._serialized_end=63
+  _globals['_ACK']._serialized_start=65
+  _globals['_ACK']._serialized_end=133
+  _globals['_ENVIARDADOSPARAMS']._serialized_start=135
+  _globals['_ENVIARDADOSPARAMS']._serialized_end=168
+  _globals['_ENVIARDADOSRESULT']._serialized_start=170
+  _globals['_ENVIARDADOSRESULT']._serialized_end=223
+  _globals['_CONSULTARDADOSPARAMS']._serialized_start=225
+  _globals['_CONSULTARDADOSPARAMS']._serialized_end=247
+  _globals['_CONSULTARDADOSRESULT']._serialized_start=249
+  _globals['_CONSULTARDADOSRESULT']._serialized_end=294
+  _globals['_LOG']._serialized_start=296
+  _globals['_LOG']._serialized_end=346
+  _globals['_CLIENTSERVICE']._serialized_start=349
+  _globals['_CLIENTSERVICE']._serialized_end=483
+  _globals['_REPLICASERVICE']._serialized_start=485
+  _globals['_REPLICASERVICE']._serialized_end=568
 # @@protoc_insertion_point(module_scope)

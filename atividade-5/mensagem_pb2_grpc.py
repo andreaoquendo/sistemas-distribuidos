@@ -154,6 +154,11 @@ class ReplicaServiceStub(object):
                 request_serializer=mensagem__pb2.Log.SerializeToString,
                 response_deserializer=mensagem__pb2.Ack.FromString,
                 _registered_method=True)
+        self.CommitarDados = channel.unary_unary(
+                '/ReplicaService/CommitarDados',
+                request_serializer=mensagem__pb2.CommitParams.SerializeToString,
+                response_deserializer=mensagem__pb2.Ack.FromString,
+                _registered_method=True)
 
 
 class ReplicaServiceServicer(object):
@@ -165,12 +170,23 @@ class ReplicaServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def CommitarDados(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ReplicaServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'ReplicarDados': grpc.unary_unary_rpc_method_handler(
                     servicer.ReplicarDados,
                     request_deserializer=mensagem__pb2.Log.FromString,
+                    response_serializer=mensagem__pb2.Ack.SerializeToString,
+            ),
+            'CommitarDados': grpc.unary_unary_rpc_method_handler(
+                    servicer.CommitarDados,
+                    request_deserializer=mensagem__pb2.CommitParams.FromString,
                     response_serializer=mensagem__pb2.Ack.SerializeToString,
             ),
     }
@@ -200,6 +216,33 @@ class ReplicaService(object):
             target,
             '/ReplicaService/ReplicarDados',
             mensagem__pb2.Log.SerializeToString,
+            mensagem__pb2.Ack.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def CommitarDados(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/ReplicaService/CommitarDados',
+            mensagem__pb2.CommitParams.SerializeToString,
             mensagem__pb2.Ack.FromString,
             options,
             channel_credentials,

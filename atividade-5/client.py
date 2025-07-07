@@ -1,5 +1,6 @@
 import grpc
 import mensagem_pb2, mensagem_pb2_grpc
+import sys
 
 def enviar_dados(stub, data):
     request = mensagem_pb2.EnviarDadosParams(data=data)
@@ -16,7 +17,11 @@ def consultar_dados(stub):
 def main():
     with grpc.insecure_channel('localhost:50051') as channel:
         stub = mensagem_pb2_grpc.ClientServiceStub(channel)
-        enviar_dados(stub, "Uma mensagem muito legal")
+        if len(sys.argv) > 1:
+            mensagem = " ".join(sys.argv[1:])
+            enviar_dados(stub, mensagem)
+        else:
+            print("Uso: python client.py <mensagem>")
 
 if __name__ == '__main__':
     main()
