@@ -24,12 +24,38 @@ replica_stubs = []
 class LeaderServicer(mensagem_pb2_grpc.ClientServiceServicer):
     def EnviarDados(self, request, context):
         global offset_counter
+        global logs
+
+        def carregar_logs():
+            if os.path.exists(f'leader.csv'):
+                logs = []
+                with open(f'leader.csv', mode='r', encoding='utf-8') as csvfile:
+                    reader = csv.DictReader(csvfile)
+                    for row in reader:
+                        entry = mensagem_pb2.Log(
+                            epoch=int(row['epoch']),
+                            offset=int(row['offset']),
+                            data=row['data']
+                        )
+                        logs.append(entry)
+
+        def realizar_replica(i, stub):
+            response = stub.ReplicarDados(log, timeout=5.0)
+            if response.recebido:
+                print(f"[LEADER] Réplica {i+1} confirmou recebimento")
+                return True
+            else:
+                print(f"[LEADER] Réplica {i+1} desatualizada. Offset dela: {response.ultimo_offset}, epoch: {response.ultima_epoca}")
+                if ressintonizar_replica(index=i, offset=response.ultimo_offset):
+                    realizar_replica(i, replica_stubs[i])
+                    return True
+            return False
 
         def reconectar_replica(index):
             print(f"[LEADER] Tentando reconectar réplica {index+1}...")
             try:
                 canal = grpc.insecure_channel(replicas[index])
-                grpc.channel_ready_future(canal).result(timeout=1.0)  # espera o canal ficar pronto
+                grpc.channel_ready_future(canal).result(timeout=5.0)  # espera o canal ficar pronto
 
                 stub = mensagem_pb2_grpc.ReplicaServiceStub(canal)
                 replica_stubs[index] = stub
@@ -43,30 +69,26 @@ class LeaderServicer(mensagem_pb2_grpc.ClientServiceServicer):
                 print(f"[LEADER] Erro inesperado ao reconectar réplica {index+1}: {e}")
                 return False
 
-        def replicar(i, stub):
-            try:
-                response = stub.ReplicarDados(log, timeout=2.0)
-                if response.recebido:
-                    print(f"[LEADER] Réplica {i+1} confirmou recebimento")
-                    success_count += 1
-                else:
-                    print(f"[LEADER] Réplica {i+1} desatualizada. Offset dela: {response.ultimo_offset}, epoch: {response.ultima_epoca}")
-                    print("oi")
-                    ressintonizar_replica(i, response.ultimo_offset)
-                    print("oi")
-            except Exception as e:
-                print("oi")
-
         def ressintonizar_replica(index, offset):
+            print("Tentou ressintonizar")
+            print(offset)
+            print(offset_counter)
+            print(len(logs))
+
             missing_entries = [e for e in logs if e.offset > offset]
-            print(missing_entries)
+            for e in missing_entries:
+                print(e.data)
+
             for e in missing_entries:
                 try:
-                    resend_response = replica_stubs[index].ReplicarDados(e, timeout=1.0)
+                    print(f"Enviando o dado: {e.data}")
+                    resend_response = replica_stubs[index].ReplicarDados(e, timeout=5.0)
                     if resend_response.recebido:
-                        print(f"[LEADER] Réplica {i+1} sincronizada até offset {e.offset}")
+                        params = mensagem_pb2.CommitParams(epoch=current_epoch, offset=offset_counter)
+                        replica_stubs[index].CommitarDados(params)
+                        print(f"[LEADER] Réplica {index+1} sincronizada até offset {e.offset}")
                 except grpc.RpcError:
-                    print(f"[LEADER] Falha ao reenviar offset {e.offset} para réplica {i+1}")
+                    print(f"[LEADER] Falha ao reenviar offset {e.offset} para réplica {index+1}")
                     return False
             return True
 
@@ -76,26 +98,19 @@ class LeaderServicer(mensagem_pb2_grpc.ClientServiceServicer):
             data=request.data
         )
 
-        logs.append(log)
+        carregar_logs()
         print(f"[LEADER] Dado recebido: '{request.data}' (epoch={log.epoch}, offset={log.offset})")
         offset_counter += 1
 
         success_count = 0
         for i, stub in enumerate(replica_stubs):
             try:
-                response = stub.ReplicarDados(log, timeout=1.0)
-                if response.recebido:
-                    print(f"[LEADER] Réplica {i+1} confirmou recebimento")
-                    success_count += 1
-                else:
-                    print(f"[LEADER] Réplica {i+1} desatualizada. Offset dela: {response.ultimo_offset}, epoch: {response.ultima_epoca}")
-                    if ressintonizar_replica(index=i, offset=response.ultimo_offset):
-                        success_count+=1
+                if realizar_replica(i, stub):
+                    success_count +=1
             except grpc.RpcError as e:
-                print(f"[LEADER] ERRO no envio de dados...")
                 if reconectar_replica(i):
-                    print("Voltando a replicar...")
-                    replicar(i, replica_stubs[i])
+                    if realizar_replica(i, stub):
+                        success_count+=1
 
         if success_count >= len(replicas)/2:
             print("[LEADER] Quórum atingido. Confirmando gravação ao cliente.")
@@ -119,13 +134,15 @@ class LeaderServicer(mensagem_pb2_grpc.ClientServiceServicer):
                     if write_header:
                         writer.writerow(['epoch', 'offset', 'data'])
                     writer.writerow([log.epoch, log.offset, log.data])
-
+                
+                logs.append(log)
                 return mensagem_pb2.EnviarDadosResult(
                     success=True,
                     message="Dado replicado com sucesso (quórum atingido)"
                 )
         
         print("[LEADER] Falha ao atingir quórum. Dado não confirmado.")
+        offset_counter-=1
         return mensagem_pb2.EnviarDadosResult(
             success=False,
             message="Erro: não foi possível replicar para maioria"

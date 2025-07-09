@@ -10,9 +10,26 @@ import os
 
 # Armazena dados replicados
 replica_log = []
+commited_log = []
 nome = "nome_replica"
 class ReplicaServicer(mensagem_pb2_grpc.ReplicaServiceServicer):
     def ReplicarDados(self, request, context):
+        global replica_log
+
+        print("Replicando os dados...")
+        print(request.data)
+        if os.path.exists(f'{nome}.csv'):
+            replica_log = []
+            print("EXISTE")
+            with open(f'{nome}.csv', mode='r', encoding='utf-8') as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    entry = mensagem_pb2.Log(
+                        epoch=int(row['epoch']),
+                        offset=int(row['offset']),
+                        data=row['data']
+                    )
+                    replica_log.append(entry)
         
         if not replica_log:
             expected_offset = 0
@@ -43,20 +60,26 @@ class ReplicaServicer(mensagem_pb2_grpc.ReplicaServiceServicer):
                 ultima_epoca=expected_epoch,
                 ultimo_offset=expected_offset - 1
             )
-        else:
-            # Entrada consistente
-            replica_log.append(request)
-            print(f"[{nome}] Entrada aceita: Época={request.epoch}, Offset={request.offset}, Dado='{request.data}'")
+        
+        replica_log.append(request)
+        print(f"[{nome}] Entrada aceita: Época={request.epoch}, Offset={request.offset}, Dado='{request.data}'")
 
         return mensagem_pb2.Ack(recebido=True)
     
     def CommitarDados(self, request, context):
-        # Salva os dados do replica_log em um arquivo CSV
-        with open(f'{nome}.csv', mode='w', newline='', encoding='utf-8') as csvfile:
+
+        file_exists = os.path.exists(f'{nome}.csv')
+        write_header = not file_exists or os.stat(f'{nome}.csv').st_size == 0
+        print("Na hora de comitar: replica_log tem")
+        for e in replica_log:
+            print(e.data)
+        log = replica_log[-1]
+        with open(f'{nome}.csv', mode='a', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(['epoch', 'offset', 'data'])
-            for entry in replica_log:
-                writer.writerow([entry.epoch, entry.offset, entry.data])
+            if write_header:
+                writer.writerow(['epoch', 'offset', 'data'])
+            writer.writerow([log.epoch, log.offset, log.data])
+
         print("[RÉPLICA 1] Dados commitados e salvos em replica1_log.csv")
 
         return mensagem_pb2.Ack(recebido=True)
