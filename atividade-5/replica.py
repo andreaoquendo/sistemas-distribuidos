@@ -26,7 +26,18 @@ class ReplicaServicer(mensagem_pb2_grpc.ReplicaServiceServicer):
         if request.offset != expected_offset or request.epoch != expected_epoch:
             print(f"[{nome}] Inconsistência: esperado offset={expected_offset}, epoch={expected_epoch}, mas recebeu offset={request.offset}, epoch={request.epoch}")
 
-            # NÃO aceita a entrada ainda. Informa ao líder o estado atual.
+            if request.offset < expected_offset:
+                replica_log[:] = [entry for entry in replica_log if entry.offset < request.offset]
+                expected_offset = request.offset
+                expected_epoch = request.epoch
+
+                with open(f'{nome}.csv', mode='w', newline='', encoding='utf-8') as csvfile:
+                    writer = csv.writer(csvfile)
+                    writer.writerow(['epoch', 'offset', 'data'])
+                    for entry in replica_log:
+                        writer.writerow([entry.epoch, entry.offset, entry.data])
+                print(f"[{nome}] CSV atualizado após truncamento")
+
             return mensagem_pb2.Ack(
                 recebido=False,
                 ultima_epoca=expected_epoch,
@@ -61,9 +72,11 @@ def serve(nome, port):
 
 if __name__ == '__main__':
     
-    entrada = input("Escreva o nome e porta da réplica: ")
-    nome = entrada.split(":")[0]
-    port = entrada.split(":")[1]
+    if len(sys.argv) != 3:
+        print("Uso: python replica1.py <nome_replica> <porta>")
+        sys.exit(1)
+    nome = sys.argv[1]
+    port = sys.argv[2]
 
     if os.path.exists(f'{nome}.csv'):
         with open(f'{nome}.csv', mode='r', encoding='utf-8') as csvfile:
