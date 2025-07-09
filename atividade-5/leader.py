@@ -83,7 +83,6 @@ class LeaderServicer(mensagem_pb2_grpc.ClientServiceServicer):
         success_count = 0
         for i, stub in enumerate(replica_stubs):
             try:
-                print("1")
                 response = stub.ReplicarDados(log, timeout=1.0)
                 if response.recebido:
                     print(f"[LEADER] Réplica {i+1} confirmou recebimento")
@@ -134,7 +133,7 @@ class LeaderServicer(mensagem_pb2_grpc.ClientServiceServicer):
 
     def ConsultarDados(self, request, context):
         print("[LEADER] Consulta recebida do cliente")
-        return mensagem_pb2.ConsultarDadosResult(entries=log)
+        return mensagem_pb2.ConsultarDadosResult(entries=logs)
 
 def serve():
     port = "50051"

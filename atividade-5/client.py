@@ -18,8 +18,11 @@ def main():
     with grpc.insecure_channel('localhost:50051') as channel:
         stub = mensagem_pb2_grpc.ClientServiceStub(channel)
         if len(sys.argv) > 1:
-            mensagem = " ".join(sys.argv[1:])
-            enviar_dados(stub, mensagem)
+            if(sys.argv[1] == "consultar"):
+                consultar_dados(stub)
+            else: 
+                mensagem = " ".join(sys.argv[1:])
+                enviar_dados(stub, mensagem)
         else:
             print("Uso: python client.py <mensagem>")
 
